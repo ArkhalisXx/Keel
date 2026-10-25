@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="auth card"><p class="eyebrow">CREATE YOUR WORKSPACE</p><h1>Set your course.</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button>Create account</button></form><p>Already registered? <a href="{% url 'login' %}">Log in</a></p></section>{% endblock %}

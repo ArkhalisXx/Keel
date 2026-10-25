@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<p class="eyebrow">{{ q.topic }}</p><section class="card auth"><h1>{{ q.prompt }}</h1><form method="post">{% csrf_token %}{% for i, choice in choices %}<label class="choice"><input type="radio" name="choice" value="{{ i }}" required> {{ choice }}</label>{% endfor %}<button>Check answer</button></form></section>{% endblock %}

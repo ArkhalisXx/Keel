@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="auth card"><p class="eyebrow">WELCOME ABOARD</p><h1>Your next chapter starts here.</h1><p>Log in to your personal review workspace.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button>Log in</button></form><p>New to Keel? <a href="{% url 'register' %}">Create an account</a></p></section>{% endblock %}
