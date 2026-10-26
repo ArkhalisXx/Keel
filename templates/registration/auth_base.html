@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block body_class %}auth-page{% endblock %}
+{% block content %}
+<div class="auth-layout">
+  <section class="auth-story" aria-label="About Keel">
+    <p class="eyebrow">BUILT FOR YOUR NEXT HORIZON</p>
+    <h1>Steady your course.<br>Master your craft.</h1>
+    <p class="auth-story-copy">Your personal workspace for naval architecture review. Learn from your references, sharpen your understanding, and practice with purpose.</p>
+    <div class="auth-story-bottom"><span class="auth-rule" aria-hidden="true"></span><span>Study with direction.</span></div>
+  </section>
+  <section class="auth-panel" aria-labelledby="auth-heading">
+    {% block auth_content %}{% endblock %}
+  </section>
+</div>
+{% endblock %}

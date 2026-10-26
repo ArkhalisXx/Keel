@@ -8,7 +8,7 @@
   <title>Keel · Study with direction</title>
   <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <header>
   <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M8 10h8M4 15c0 8 16 8 16 0M2 17l2-2 2 2m12 0 2-2 2 2"/></svg></span>KEEL</a>
   <span class="tagline">Study with direction.</span>

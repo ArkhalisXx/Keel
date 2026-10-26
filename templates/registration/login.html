@@ -1,1 +1,19 @@
-{% extends 'base.html' %}{% block content %}<section class="auth card"><p class="eyebrow">WELCOME ABOARD</p><h1>Your next chapter starts here.</h1><p>Log in to your personal review workspace.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button>Log in</button></form><p>New to Keel? <a href="{% url 'register' %}">Create an account</a></p></section>{% endblock %}
+{% extends 'registration/auth_base.html' %}
+{% block auth_content %}
+<p class="eyebrow">WELCOME ABOARD</p>
+<h2 id="auth-heading">Good to have you back.</h2>
+<p class="auth-subtitle">Log in to continue your learning journey.</p>
+<form method="post" class="auth-form">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for field in form %}
+  <div class="auth-field">
+    {{ field.label_tag }}{{ field }}{{ field.errors }}
+  </div>
+  {% endfor %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <button type="submit">Log in <span aria-hidden="true">&rarr;</span></button>
+</form>
+<p class="auth-switch">New to Keel? <a href="{% url 'register' %}">Create an account</a></p>
+<p class="auth-footnote">Your references. Your progress. Your own pace.</p>
+{% endblock %}
