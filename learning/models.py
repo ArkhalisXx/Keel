@@ -38,11 +38,34 @@ class Document(models.Model):
 
     def __str__(self): return self.title
 
+class ExamPaper(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    document = models.ForeignKey(Document, null=True, blank=True, on_delete=models.SET_NULL)
+    title = models.CharField(max_length=200)
+    topic = models.CharField(max_length=120)
+    warnings = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'document'], name='one_import_per_owner_document')]
+        ordering = ['-created_at', '-pk']
+
+    def __str__(self): return self.title
+
+
 class Question(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE,
+                              help_text='Blank means a shared question; imported papers always belong to their uploader.')
+    paper = models.ForeignKey(ExamPaper, null=True, blank=True, on_delete=models.CASCADE, related_name='questions')
+    source_document = models.ForeignKey(Document, null=True, blank=True, on_delete=models.SET_NULL)
+    source_number = models.CharField(max_length=20, blank=True)
+    source_page = models.PositiveIntegerField(null=True, blank=True)
+    position = models.PositiveIntegerField(default=0)
+
     topic = models.CharField(max_length=120)
     prompt = models.TextField()
     choices = models.JSONField(help_text='Exactly four strings, e.g. ["A", "B", "C", "D"]')
-    correct_index = models.PositiveSmallIntegerField(choices=[(i, str(i+1)) for i in range(4)])
+    correct_index = models.PositiveSmallIntegerField(choices=[(i, str(i+1)) for i in range(4)], null=True, blank=True)
     explanation = models.TextField()
     reference = models.CharField(max_length=300, blank=True)
     reviewed = models.BooleanField(default=False)
@@ -50,6 +73,17 @@ class Question(models.Model):
         from django.core.exceptions import ValidationError
         if not isinstance(self.choices, list) or len(self.choices) != 4 or not all(isinstance(x,str) and x.strip() for x in self.choices):
             raise ValidationError({'choices': 'Provide exactly four nonempty text choices.'})
+        errors = {}
+        if self.reviewed and self.correct_index is None:
+            errors['correct_index'] = 'Choose the correct answer before publishing.'
+        if self.reviewed and not self.explanation.strip():
+            errors['explanation'] = 'Add a verified explanation before publishing.'
+        if self.paper_id and self.owner_id != self.paper.owner_id:
+            errors['owner'] = 'Imported questions must belong to the paper owner.'
+        if self.source_document_id and self.owner_id != self.source_document.owner_id:
+            errors['source_document'] = 'The source document must belong to the question owner.'
+        if errors:
+            raise ValidationError(errors)
     def __str__(self): return self.prompt[:80]
 
 class Attempt(models.Model):

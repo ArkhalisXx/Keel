@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#080f1d">
   <title>Keel · Study with direction</title>
   <link rel="stylesheet" href="{% static 'style.css' %}">
+  <link rel="stylesheet" href="{% static 'dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'workspace.css' %}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
 <header>
@@ -17,8 +19,9 @@
   <nav aria-label="Main navigation">
     <a href="{% url 'dashboard' %}" {% if current == 'dashboard' %}aria-current="page"{% endif %}>Overview</a>
     <a href="{% url 'library' %}" {% if current == 'library' %}aria-current="page"{% endif %}>Library</a>
+    <a href="{% url 'import_paper' %}" {% if current == 'import_paper' or current == 'paper_detail' or current == 'review_question' %}aria-current="page"{% endif %}>Exam papers</a>
     <a href="{% url 'practice' %}" {% if current == 'practice' or current == 'question' or current == 'result' %}aria-current="page"{% endif %}>Practice</a>
-    <a href="{% url 'tutor' %}" {% if current == 'tutor' %}aria-current="page"{% endif %}>AI tutor</a>
+    <a href="{% url 'assistant' %}" {% if current == 'assistant' or current == 'tutor' %}aria-current="page"{% endif %}>AI tutor</a>
   </nav>
   {% endwith %}
   <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary">Log out</button></form>
@@ -29,5 +32,16 @@
   {% block content %}{% endblock %}
 </main>
 <footer><span>KEEL / Personal review workspace</span><span>Independent study tool · Not affiliated with PRC.</span></footer>
+{% if user.is_authenticated %}
+{% if request.resolver_match.url_name != 'assistant' %}
+<button class="assistant-launcher" type="button" aria-label="Open Keel AI assistant" aria-controls="assistant-drawer" aria-expanded="false"><img src="{% static assistant_icon %}" width="42" height="42" alt=""><span>Ask Keel</span><span class="assistant-dot" aria-hidden="true"></span></button>
+<aside id="assistant-drawer" class="assistant-drawer" aria-label="Keel AI assistant" hidden>
+  <div class="drawer-heading"><div><strong>Keel assistant</strong><span>Your study companion</span></div><button class="secondary drawer-close" type="button" aria-label="Close assistant">×</button></div>
+  {% include 'learning/assistant_panel.html' %}
+  <a class="drawer-fullscreen" href="{% url 'assistant' %}">Open full workspace ↗</a>
+</aside>
+{% endif %}
+<script src="{% static 'assistant.js' %}" defer></script>
+{% endif %}
 </body>
 </html>

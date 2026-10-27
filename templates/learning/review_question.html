@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<p class="eyebrow">{{ paper.title }} / QUESTION {{ q.source_number }}</p><h1>Review before you practice.</h1><p>Compare the extracted text and answer with your original paper.{% if q.source_document %} <a href="{% url 'document' q.source_document.pk %}">Download source{% if q.source_page %} · page {{ q.source_page }}{% endif %}</a>{% endif %}</p>
+<section class="card review-editor"><form method="post">{% csrf_token %}{{ form.as_p }}<div class="actions"><button name="action" value="publish">Publish to my practice bank</button><button class="secondary" name="action" value="draft">Save as draft</button><a href="{% url 'paper_detail' paper.pk %}">Back to paper</a></div></form></section>
+{% endblock %}

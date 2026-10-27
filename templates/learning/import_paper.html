@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">FROM PAPER TO PRACTICE</p><h1>Your exam papers</h1><p>Turn your mock test papers into private, reviewable question sets.</p></div><a class="button secondary" href="{% url 'library' %}">Upload a paper →</a></div>
+<div class="grid">
+<section class="card"><h2>Import questions</h2><p>Upload your PDF, DOCX or TXT in Library and wait for Ready, then select it here.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button>Import as drafts</button></form><div class="format-hint"><strong>Supported paper format</strong><p>Numbered questions with A–D choices, including multiline choices. An optional “Answer Key” section can supply answers. Missing keys are left blank.</p><p>Check OCR, diagrams, formulas, and every answer before publishing. This does not certify a paper as an official PRC exam.</p></div></section>
+<section class="card"><h2>Imported papers</h2>{% for paper in papers %}<article class="document"><h3><a href="{% url 'paper_detail' paper.pk %}">{{ paper.title }}</a></h3><p>{{ paper.topic }} · {{ paper.question_count }} questions · {{ paper.published_count }} published</p><a href="{% url 'paper_detail' paper.pk %}">Review question set →</a></article>{% empty %}<div class="empty-state"><h3>Your practice bank starts here.</h3><p>Import a mock paper to extract its questions. All imported questions begin as private drafts.</p></div>{% endfor %}</section>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <title>Keel sailboat study companion</title>
+  <path d="M60 14 22 87c-2 4 0 6 4 6l34-1" fill="#92d7e9" stroke="#12253b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m31 69 29-1v10l-33 1zM42 48l18-1v9l-22 1z" fill="#69b1cb" opacity=".65"/>
+  <path d="M67 17c21 7 45 29 49 59 2 9-2 12-10 12l-39 1V17Z" fill="#6ab5d7" stroke="#12253b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M69 19c13 5 25 13 33 22-15 3-22 19-33 22V19Z" fill="#ef89bf"/>
+  <path d="M69 21v64l15 1c-9-13-12-28-11-63l-4-2Z" fill="#385a88" opacity=".2"/>
+  <rect x="59" y="8" width="10" height="98" rx="3" fill="#557da8" stroke="#12253b" stroke-width="4"/>
+  <ellipse cx="83" cy="68" rx="6" ry="4" fill="#f58bbf"/>
+  <ellipse cx="108" cy="68" rx="6" ry="4" fill="#f58bbf"/>
+  <path d="M85 61v3m20-3v3m-13 0q4 5 8 0" stroke="#12253b" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="m18 93-5 14m92-17 4 14" stroke="#12253b" stroke-width="4" stroke-linecap="round"/>
+  <path d="m10 105 108-4c5 0 7 4 3 8l-12 10a18 18 0 0 1-12 5H26a12 12 0 0 1-12-8l-4-11Z" fill="#e5edf3" stroke="#12253b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m15 115 100-4-6 8a18 18 0 0 1-12 5H26a12 12 0 0 1-11-9Z" fill="#ef8cbf"/>
+  <path d="m14 115 103-4" stroke="#12253b" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="m84 108 16-.5" stroke="#91d6e8" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
