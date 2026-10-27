@@ -1,0 +1,80 @@
+name: keel
+x-app: &app
+  build: .
+  image: keel-local
+  env_file: .env
+  environment: &app-env
+    DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Run python scripts/configure_local.py first}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    POSTGRES_HOST: db
+    POSTGRES_DB: keel
+    POSTGRES_USER: keel
+    CELERY_BROKER_URL: redis://redis:6379/0
+    OMP_THREAD_LIMIT: '1'
+  volumes:
+    - uploads:/app/uploads
+  init: true
+services:
+  db:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: keel
+      POSTGRES_USER: keel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U keel -d keel']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7-bookworm
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  setup:
+    <<: *app
+    command: ['python', 'manage.py', 'migrate', '--noinput']
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    <<: *app
+    command: ['sh', '-c', 'python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 90 --access-logfile -']
+    ports:
+      - '127.0.0.1:${KEEL_PORT:-8000}:8000'
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/accounts/login/", timeout=3)']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  worker:
+    <<: *app
+    command: ['celery', '-A', 'config', 'worker', '--loglevel=WARNING', '--concurrency=1']
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 2g
+    cpus: 1.0
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:

@@ -1,3 +1,11 @@
 Django==5.2.18
 pypdf==6.21.2
 python-docx==1.2.0
+celery[redis]==5.6.3
+pytesseract==0.3.13
+pypdfium2==5.14.0
+Pillow==12.3.0
+psycopg[binary]==3.3.6
+gunicorn==25.3.0
+whitenoise==6.12.0
+python-dotenv==1.2.1

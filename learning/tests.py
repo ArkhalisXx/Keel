@@ -9,7 +9,15 @@ from django.test import TestCase, override_settings
 from .models import Document, Question, Attempt
 from .services import retrieve, explain, extract_pages
 
+@override_settings(
+    CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True, OCR_ENABLED=False,
+    STORAGES={'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+              'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
 class WorkflowTests(TestCase):
+    def upload(self, data):
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.post('/library/', data)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.override = override_settings(MEDIA_ROOT=self.temp.name)
@@ -28,9 +36,10 @@ class WorkflowTests(TestCase):
         self.assertEqual(self.client.session['_auth_user_id'], str(User.objects.get(username='newstudent').pk))
 
     def test_upload_retrieval_download_and_delete(self):
-        response = self.client.post('/library/',{'title':'Notes','file':SimpleUploadedFile('notes.txt',b'Buoyancy equals the weight of displaced water.')})
+        response = self.upload({'title':'Notes','file':SimpleUploadedFile('notes.txt',b'Buoyancy equals the weight of displaced water.')})
         self.assertRedirects(response,'/library/')
         doc = Document.objects.get()
+        self.assertEqual(doc.status, Document.Status.READY)
         self.assertEqual(doc.owner,self.user)
         sources = retrieve([doc],'Explain buoyancy')
         self.assertIn('displaced water',sources[0]['text'])
@@ -41,7 +50,7 @@ class WorkflowTests(TestCase):
         self.assertFalse(Document.objects.exists())
 
     def test_private_documents_and_attempts(self):
-        doc = Document.objects.create(owner=self.other,title='Other account confidential notes',file='private.txt',pages=[{'page':1,'text':'secret buoyancy'}])
+        doc = Document.objects.create(owner=self.other,title='Other account confidential notes',file='private.txt',pages=[{'page':1,'text':'secret buoyancy'}],status=Document.Status.READY)
         self.assertNotContains(self.client.get('/library/'),'Other account confidential notes')
         self.assertEqual(self.client.get(f'/documents/{doc.pk}/').status_code,404)
         self.assertEqual(self.client.post(f'/documents/{doc.pk}/delete/').status_code,404)
@@ -68,7 +77,7 @@ class WorkflowTests(TestCase):
     def test_invalid_choice_and_file_rejected(self):
         self.client.post(f'/practice/{self.q.pk}/',{'choice':'99'})
         self.assertEqual(Attempt.objects.count(),0)
-        response=self.client.post('/library/',{'title':'Bad','file':SimpleUploadedFile('bad.exe',b'bad')})
+        response=self.upload({'title':'Bad','file':SimpleUploadedFile('bad.exe',b'bad')})
         self.assertContains(response,'Supported formats')
         self.assertEqual(Document.objects.count(),0)
 
@@ -105,3 +114,57 @@ class WorkflowTests(TestCase):
         from django.test import Client
         client=Client(enforce_csrf_checks=True);client.force_login(self.user)
         self.assertEqual(client.post(f'/practice/{self.q.pk}/',{'choice':'0'}).status_code,403)
+
+    def test_upload_over_old_size_and_text_limits(self):
+        text = b'Marine engineering notes.\n' * 450_000
+        self.assertGreater(len(text), 10 * 1024 * 1024)
+        response = self.upload( {'title': 'Large textbook', 'file': SimpleUploadedFile('large.txt', text)})
+        self.assertRedirects(response, '/library/')
+        doc = Document.objects.get(title='Large textbook')
+        self.assertEqual(len(doc.pages[0]['text']), len(text))
+
+    @override_settings(DOCUMENT_MAX_UPLOAD_MB=1, DOCUMENT_MAX_PDF_PAGES=2, DOCUMENT_MAX_TEXT_CHARS=20)
+    def test_configurable_limits_and_precise_errors(self):
+        response = self.upload( {'title':'Large', 'file':SimpleUploadedFile('large.txt', b'x' * (1024 * 1024 + 1))})
+        self.assertContains(response, 'no larger than 1 MB')
+        response = self.upload( {'title':'Too much text', 'file':SimpleUploadedFile('notes.txt', b'x' * 21)})
+        self.assertContains(self.client.get('/library/'), 'exceeds 20 characters')
+        from pypdf import PdfWriter
+        stream = io.BytesIO(); writer = PdfWriter()
+        for _ in range(3): writer.add_blank_page(width=100, height=100)
+        writer.write(stream)
+        response = self.upload( {'title':'Too many pages','file':SimpleUploadedFile('book.pdf', stream.getvalue())})
+        response = self.client.get('/library/')
+        self.assertContains(response, 'exceeds 2 pages')
+        self.assertContains(response, '1 MB · 2 PDF pages')
+        self.assertEqual(Document.objects.filter(status=Document.Status.FAILED).count(), 2)
+
+    def test_pdf_over_old_page_limit_and_locked_pdf(self):
+        from pypdf import PdfWriter
+        from pypdf.generic import DecodedStreamObject, NameObject, DictionaryObject
+        writer = PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        first = writer.pages[0]
+        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'), NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+        first[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'): DictionaryObject({NameObject('/F1'): writer._add_object(font)})})
+        content = DecodedStreamObject()
+        content.set_data(b'BT /F1 12 Tf 10 50 Td (Naval architecture) Tj ET')
+        first[NameObject('/Contents')] = writer._add_object(content)
+        for _ in range(500): writer.add_blank_page(width=100, height=100)
+        stream = io.BytesIO(); writer.write(stream)
+        pages = extract_pages(SimpleUploadedFile('book.pdf',stream.getvalue()))
+        self.assertEqual(len(pages),501)
+        self.assertIn('Naval architecture',pages[0]['text'])
+        writer.encrypt('password')
+        stream = io.BytesIO(); writer.write(stream)
+        response = self.upload( {'title':'Locked', 'file':SimpleUploadedFile('locked.pdf',stream.getvalue())})
+        self.assertContains(self.client.get('/library/'),'password-protected')
+
+    def test_scan_error_explains_ocr(self):
+        from pypdf import PdfWriter
+        writer=PdfWriter();writer.add_blank_page(width=100,height=100)
+        stream=io.BytesIO();writer.write(stream)
+        response=self.upload({'title':'Scan','file':SimpleUploadedFile('scan.pdf',stream.getvalue())})
+        response=self.client.get('/library/')
+        self.assertContains(response,'No readable text found')
+        self.assertContains(response,'OCR must be enabled')

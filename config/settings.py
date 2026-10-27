@@ -13,9 +13,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import secrets
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env', override=False)
+DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
+if not DEBUG and not os.environ.get('DJANGO_SECRET_KEY'):
+    raise ValueError('Set DJANGO_SECRET_KEY before running with DEBUG disabled.')
 
 
 # Quick-start development settings - unsuitable for production
@@ -29,9 +34,9 @@ if not os.environ.get('DJANGO_SECRET_KEY') and not _key_file.exists():
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or _key_file.read_text().strip()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]').split(',')
 
 
 # Application definition
@@ -48,6 +53,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -129,9 +135,63 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATICFILES_DIRS = [BASE_DIR / 'static']
-MEDIA_ROOT = BASE_DIR / 'uploads'
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'uploads')))
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
+# Uploaded file content is excluded from this form-field limit.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+# Larger uploads spool to temporary files rather than staying in RAM.
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+
+# Local textbook upload limits. Override in the shell before starting Django.
+DOCUMENT_MAX_UPLOAD_MB = int(os.environ.get('DOCUMENT_MAX_UPLOAD_MB', '100'))
+DOCUMENT_MAX_PDF_PAGES = int(os.environ.get('DOCUMENT_MAX_PDF_PAGES', '3000'))
+DOCUMENT_MAX_TEXT_CHARS = int(os.environ.get('DOCUMENT_MAX_TEXT_CHARS', '20000000'))
+if min(DOCUMENT_MAX_UPLOAD_MB, DOCUMENT_MAX_PDF_PAGES, DOCUMENT_MAX_TEXT_CHARS) <= 0:
+    raise ValueError('Document limits must be positive integers.')
+
+if os.environ.get('POSTGRES_HOST'):
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'keel'),
+        'USER': os.environ.get('POSTGRES_USER', 'keel'),
+        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
+        'HOST': os.environ['POSTGRES_HOST'],
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+    }
+else:
+    DATABASES['default']['OPTIONS'] = {'timeout': 30}
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_PUBLISH_RETRY = False
+CELERY_BROKER_CONNECTION_TIMEOUT = 2
+CELERY_BROKER_TRANSPORT_OPTIONS = {'socket_connect_timeout': 2, 'socket_timeout': 2, 'visibility_timeout': 7200}
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 5
+CELERY_TASK_ACKS_LATE = True
+DOCUMENT_PROCESSING_TIMEOUT = int(os.environ.get('DOCUMENT_PROCESSING_TIMEOUT', '3600'))
+CELERY_TASK_SOFT_TIME_LIMIT = DOCUMENT_PROCESSING_TIMEOUT
+CELERY_TASK_TIME_LIMIT = DOCUMENT_PROCESSING_TIMEOUT + 30
+OCR_ENABLED = os.environ.get('OCR_ENABLED', '1') == '1'
+OCR_LANGUAGE = os.environ.get('OCR_LANGUAGE', 'eng')
+OCR_DPI = int(os.environ.get('OCR_DPI', '220'))
+OCR_MAX_PIXELS = int(os.environ.get('OCR_MAX_PIXELS', '12000000'))
+OCR_PAGE_TIMEOUT = int(os.environ.get('OCR_PAGE_TIMEOUT', '60'))
+TESSERACT_CMD = os.environ.get('TESSERACT_CMD', '')
+# Enable these behind HTTPS before exposing the service publicly.
+SESSION_COOKIE_SECURE = os.environ.get('DJANGO_SECURE_COOKIES', '0') == '1'
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+CSRF_TRUSTED_ORIGINS = [x for x in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if x]
+SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SSL_REDIRECT', '0') == '1'
+
+if not (72 <= OCR_DPI <= 400 and 1 <= OCR_MAX_PIXELS <= 20000000
+        and 1 <= OCR_PAGE_TIMEOUT <= 600 and 60 <= DOCUMENT_PROCESSING_TIMEOUT <= 3600):
+    raise ValueError('OCR settings must use DPI 72–400, up to 20M pixels, page timeout 1–600s, and job timeout 60–3600s.')

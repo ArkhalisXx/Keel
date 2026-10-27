@@ -5,3 +5,6 @@ db.sqlite3
 uploads/
 .local-secret-key
 .env
+staticfiles/
+.env.*
+!.env.example

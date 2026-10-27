@@ -2,12 +2,15 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from .forms import UploadForm, TutorForm
 from .models import Document, Question, Attempt
-from .services import extract_pages, retrieve, explain
+from .services import DocumentExtractionError, extract_pages, retrieve, explain
+from django.conf import settings
+from django.db import transaction
+from .tasks import queue_document
 
 
 def register(request):
@@ -29,15 +32,12 @@ def library(request):
     if request.method == 'POST' and form.is_valid():
         doc = form.save(commit=False)
         doc.owner = request.user
-        try:
-            doc.pages = extract_pages(request.FILES['file'])
-        except Exception:
-            form.add_error('file', 'Could not read this document. Use a valid text-based PDF, DOCX or UTF-8 TXT (up to 500 pages). Scans need OCR first.')
-        else:
+        with transaction.atomic():
             doc.save()
-            messages.success(request, 'Document added to your private library.')
-            return redirect('library')
-    return render(request, 'learning/library.html', {'form':form, 'documents':Document.objects.filter(owner=request.user).order_by('-created_at')})
+            queue_document(doc)
+        messages.success(request, 'Document uploaded. Text extraction and OCR will run in the background.')
+        return redirect('library')
+    return render(request, 'learning/library.html', {'form':form, 'documents':Document.objects.filter(owner=request.user).defer('pages').order_by('-created_at'), 'upload_limit_mb': settings.DOCUMENT_MAX_UPLOAD_MB, 'pdf_page_limit': settings.DOCUMENT_MAX_PDF_PAGES})
 
 @login_required
 def document(request, pk):
@@ -51,6 +51,27 @@ def delete_document(request, pk):
     doc.file.delete(save=False)
     doc.delete()
     return redirect('library')
+
+@login_required
+def document_status(request, pk):
+    doc = get_object_or_404(Document.objects.defer('pages'), pk=pk, owner=request.user)
+    return JsonResponse({'status': doc.status, 'label': doc.get_status_display(),
+        'processed': doc.pages_processed, 'total': doc.total_pages,
+        'ocr_pages': doc.ocr_page_count, 'error': doc.processing_error, 'can_retry': doc.can_retry})
+
+
+@login_required
+@require_POST
+def retry_document(request, pk):
+    with transaction.atomic():
+        doc = get_object_or_404(Document.objects.select_for_update().defer('pages'), pk=pk, owner=request.user)
+        if doc.can_retry:
+            queue_document(doc)
+            messages.info(request, 'Document queued for another processing attempt.')
+        else:
+            messages.info(request, 'This document is ready or its processing attempt is still active.')
+    return redirect('library')
+
 
 @login_required
 def tutor(request):

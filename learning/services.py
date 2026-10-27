@@ -4,30 +4,94 @@ import os
 import re
 import urllib.request
 from pathlib import Path
+from django.conf import settings
+from billiard.exceptions import SoftTimeLimitExceeded
 
 
-def extract_pages(file):
-    suffix = Path(file.name).suffix.lower()
-    if suffix == '.pdf':
-        from pypdf import PdfReader
-        reader = PdfReader(file)
-        if len(reader.pages) > 500:
-            raise ValueError('Please split PDFs longer than 500 pages.')
-        pages = [{'page': i+1, 'text': p.extract_text() or ''} for i, p in enumerate(reader.pages)]
-    elif suffix == '.docx':
-        from docx import Document
-        doc = Document(file)
-        text = '\n'.join(p.text for p in doc.paragraphs)
-        text += '\n' + '\n'.join(' | '.join(c.text for c in row.cells) for t in doc.tables for row in t.rows)
-        pages = [{'page': 1, 'text': text}]
-    else:
-        pages = [{'page': 1, 'text': file.read().decode('utf-8-sig')}]
-    if not any(p['text'].strip() for p in pages):
-        raise ValueError('No readable text found. Scanned PDFs need OCR before uploading.')
-    if sum(len(p['text']) for p in pages) > 2_000_000:
-        raise ValueError('Extracted text is too large. Split the document into smaller files.')
-    file.seek(0)
-    return pages
+class ProcessingCancelled(Exception):
+    """The document was deleted or its processing attempt was superseded."""
+
+
+class DocumentExtractionError(ValueError):
+    """A safe, user-facing explanation for a rejected document."""
+
+
+def extract_pages(file, progress=None):
+    pages = []
+    total_chars = 0
+    renderer = None
+
+    def add_page(number, text):
+        nonlocal total_chars
+        total_chars += len(text)
+        if total_chars > settings.DOCUMENT_MAX_TEXT_CHARS:
+            raise DocumentExtractionError(
+                f'Extracted text exceeds {settings.DOCUMENT_MAX_TEXT_CHARS:,} characters. '
+                'Split the document or increase DOCUMENT_MAX_TEXT_CHARS.')
+        pages.append({'page': number, 'text': text})
+
+    try:
+        suffix = Path(file.name).suffix.lower()
+        if suffix == '.pdf':
+            from pypdf import PdfReader
+            reader = PdfReader(file)
+            if reader.is_encrypted and not reader.decrypt(''):
+                raise DocumentExtractionError('This PDF is password-protected. Upload an unlocked copy.')
+            if len(reader.pages) > settings.DOCUMENT_MAX_PDF_PAGES:
+                raise DocumentExtractionError(
+                    f'This PDF exceeds {settings.DOCUMENT_MAX_PDF_PAGES:,} pages. '
+                    'Split it or increase DOCUMENT_MAX_PDF_PAGES.')
+            total = len(reader.pages)
+            if progress:
+                progress(0, total)
+            for i, page in enumerate(reader.pages, 1):
+                text = page.extract_text() or ''
+                used_ocr = False
+                # Preserve digital text. Only pages without readable text need OCR.
+                if not text.strip() and settings.OCR_ENABLED:
+                    from .ocr import PDFOCR
+                    if renderer is None:
+                        renderer = PDFOCR(file)
+                    text = renderer.text(i - 1)
+                    used_ocr = True
+                add_page(i, text)
+                pages[-1]['source'] = 'ocr' if used_ocr else 'text'
+                if progress:
+                    progress(i, total)
+        elif suffix == '.docx':
+            from docx import Document
+            doc = Document(file)
+            # Count text as it is extracted instead of building one unbounded string.
+            for paragraph in doc.paragraphs:
+                add_page(1, paragraph.text + '\n')
+            for table in doc.tables:
+                for row in table.rows:
+                    add_page(1, ' | '.join(cell.text for cell in row.cells) + '\n')
+            pages = [{'page': 1, 'text': ''.join(p['text'] for p in pages)}]
+        elif suffix == '.txt':
+            import codecs
+            decoder = codecs.getincrementaldecoder('utf-8-sig')()
+            while chunk := file.read(64 * 1024):
+                add_page(1, decoder.decode(chunk))
+            add_page(1, decoder.decode(b'', final=True))
+            pages = [{'page': 1, 'text': ''.join(p['text'] for p in pages)}]
+        else:
+            raise DocumentExtractionError('Supported formats: PDF, DOCX, TXT.')
+        if not any(p['text'].strip() for p in pages):
+            raise DocumentExtractionError('No readable text found. The document may be blank or its scan quality too low. Check the original and retry with a clearer scan; OCR must be enabled for scanned PDFs.')
+        if suffix != '.pdf' and progress:
+            progress(1, 1)
+        return pages
+    except (DocumentExtractionError, ProcessingCancelled, SoftTimeLimitExceeded):
+        raise
+    except UnicodeError:
+        raise DocumentExtractionError('Could not decode this text file. Save it as UTF-8 and upload it again.') from None
+    except Exception:
+        raise DocumentExtractionError('Could not read this document. It may be damaged or unsupported. Try opening it locally and exporting a new PDF, DOCX or UTF-8 TXT copy.') from None
+    finally:
+        if renderer is not None:
+            renderer.close()
+        file.seek(0)
 
 
 def retrieve(documents, question):
@@ -40,7 +104,7 @@ def retrieve(documents, question):
                 chunk = text[start:start+1600]
                 score = len(words & set(re.findall(r'\w{3,}', chunk.lower())))
                 if score:
-                    matches.append((score, {'title': doc.title, 'page': page['page'], 'text': chunk, 'id': doc.pk}))
+                    matches.append((score, {'title': doc.title, 'page': page['page'], 'text': chunk, 'id': doc.pk, 'source': page.get('source', 'text')}))
     matches.sort(key=lambda item: item[0], reverse=True)
     return [item[1] for item in matches[:6]]
 

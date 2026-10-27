@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block content %}
 <div class="page-heading">
   <div>
@@ -14,7 +15,7 @@
       <span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6"/></svg></span>
       <div><h2>Add a document</h2><p>Bring your study materials aboard.</p></div>
     </div>
-    <p class="format-hint">PDF, DOCX or TXT · Up to 10 MB<br>Text-based documents only. Scans need OCR first.</p>
+    <p class="format-hint">PDF, DOCX or TXT · Up to {{ upload_limit_mb }} MB · {{ pdf_page_limit }} PDF pages<br>Scanned PDFs supported with English OCR. Large books process in the background.</p>
     <form class="upload-form" method="post" enctype="multipart/form-data">
       {% csrf_token %}
       {{ form.as_p }}
@@ -29,9 +30,15 @@
       <span class="count" aria-label="Document count">{{ documents|length }}</span>
     </div>
     {% for doc in documents %}
-    <article class="document">
+    <article class="document" data-document-status="{% url 'document_status' doc.pk %}" data-active="{% if doc.status == 'queued' or doc.status == 'processing' %}true{% else %}false{% endif %}">
       <h3><a href="{% url 'document' doc.pk %}">{{ doc.title }}</a></h3>
-      <p>{{ doc.pages|length }} pages / sections · {{ doc.created_at|date:'M j, Y' }}</p>
+      <div class="document-state">
+        <span class="status-pill" data-state="{{ doc.status }}">{{ doc.get_status_display }}</span>
+        <span class="processing-progress">{% if doc.status == 'processing' %}{{ doc.pages_processed }} / {{ doc.total_pages }} pages{% elif doc.status == 'ready' %}{{ doc.total_pages }} pages / sections{% elif doc.status == 'queued' %}Waiting for the worker. Retry is available after two minutes.{% endif %}</span>
+      </div>
+      <p class="ocr-note" {% if not doc.ocr_page_count %}hidden{% endif %}>{{ doc.ocr_page_count }} page(s) read with OCR. Verify equations and symbols against the original.</p>
+      <p class="processing-error" role="status">{{ doc.processing_error }}</p>
+      <form method="post" action="{% url 'retry_document' doc.pk %}" class="retry-form" {% if not doc.can_retry %}hidden{% endif %}>{% csrf_token %}<button class="secondary">Retry processing</button></form>
       <form method="post" action="{% url 'delete_document' doc.pk %}">{% csrf_token %}<button class="secondary">Delete document</button></form>
     </article>
     {% empty %}
@@ -43,4 +50,5 @@
     {% endfor %}
   </section>
 </div>
+<script src="{% static 'documents.js' %}" defer></script>
 {% endblock %}
