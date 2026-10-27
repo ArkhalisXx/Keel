@@ -153,3 +153,63 @@ class PrivateExamWorkflowTests(TestCase):
         self.doc.status = Document.Status.PROCESSING; self.doc.save(update_fields=['status'])
         with self.assertRaisesRegex(PaperImportError, 'ready'):
             import_document(self.owner, self.doc, 'Not ready', 'Topic')
+
+
+class PaperLayoutRegressionTests(TestCase):
+    def test_set_numbering_and_keys_are_kept_separate(self):
+        pages=[{'page':1,'text':'SET A\n1 Force unit?\na. Newton b. Metre c. Second d. Kilogram\nSET B\n1 Floating force?\na. Drag b. Buoyancy c. Thrust d. Friction'},
+               {'page':2,'text':'Answer Key SET A\n1 A\nAnswer Key SET B\n1 B'}]
+        questions,_=parse_paper(pages)
+        self.assertEqual([q['source_number'] for q in questions],['A-1','B-1'])
+        self.assertEqual([q['correct_index'] for q in questions],[0,1])
+
+    def test_wrapped_cells_subparts_and_formula_parentheses(self):
+        text='''SET A
+1 Calculate the result:
+        (a) the reduced consumption
+        (b) the remaining fuel
+        a. first             b. second            c. third             d.
+        wrapped              continued            more                 last
+2 Which formula?
+        a. W / TPC           b. (w x d) + MCT     c. (w x d) - MCT     d. (w x d) / MCT
+3 A question which continues in
+        2 lower holds of the ship.
+        a. One               b. Two               c. Three             d. Four
+Answer Key SET A
+1 D 2 B 3 A'''
+        questions,_=parse_paper([{'page':1,'text':text}])
+        self.assertEqual(len(questions),3)
+        self.assertEqual(questions[0]['choices'],['first wrapped','second continued','third more','last'])
+        self.assertIn('(a) the reduced consumption',questions[0]['prompt'])
+        self.assertEqual(questions[1]['choices'][1],'(w x d) + MCT')
+        self.assertIn('2 lower holds',questions[2]['prompt'])
+
+    def test_two_column_pdf_and_side_by_side_keys(self):
+        import io
+        from pypdf import PdfWriter
+        from pypdf.generic import DictionaryObject,NameObject,DecodedStreamObject
+        from django.core.files import File
+        from .exams import exam_pdf_pages
+        writer=PdfWriter()
+        def page(lines):
+            writer.add_blank_page(width=700,height=800)
+            p=writer.pages[-1]
+            font=DictionaryObject({NameObject('/Type'):NameObject('/Font'),NameObject('/Subtype'):NameObject('/Type1'),NameObject('/BaseFont'):NameObject('/Courier')})
+            p[NameObject('/Resources')]=DictionaryObject({NameObject('/Font'):DictionaryObject({NameObject('/F1'):writer._add_object(font)})})
+            stream=DecodedStreamObject()
+            stream.set_data('\n'.join(f'BT /F1 8 Tf 1 0 0 1 {x} {y} Tm ({text}) Tj ET' for x,y,text in lines).encode())
+            p[NameObject('/Contents')]=writer._add_object(stream)
+        lines=[]
+        for x,label in [(20,'A'),(370,'B')]:
+            lines.append((x,770,'SET '+label))
+            for n in range(1,4):
+                y=750-n*80
+                lines.extend([(x,y,f'{n} Select the correct option'),(x+10,y-20,'a. One b. Two c. Three d. Four')])
+        page(lines)
+        page([(20,770,'Answer Key SET A'),(370,770,'Answer Key SET B'),(20,740,'1 A 2 B 3 C'),(370,740,'1 D 2 C 3 B')])
+        buffer=io.BytesIO();writer.write(buffer);buffer.seek(0)
+        doc=Document(file=File(buffer,name='two-columns.pdf'),pages=[])
+        questions,_=parse_paper(exam_pdf_pages(doc))
+        self.assertEqual([q['source_number'] for q in questions],['A-1','A-2','A-3','B-1','B-2','B-3'])
+        self.assertEqual([q['correct_index'] for q in questions],[0,1,2,3,2,1])
+        self.assertTrue(all(q['source_page']==1 for q in questions))
