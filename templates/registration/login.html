@@ -1,8 +1,8 @@
 {% extends 'registration/auth_base.html' %}
 {% block auth_content %}
-<p class="eyebrow">WELCOME ABOARD</p>
-<h2 id="auth-heading">Good to have you back.</h2>
-<p class="auth-subtitle">Log in to continue your learning journey.</p>
+<p class="eyebrow">Aboard the ship</p>
+<h2 id="auth-heading">Login</h2>
+<p class="auth-subtitle">Future Engineer</p>
 <form method="post" class="auth-form">
   {% csrf_token %}
   {{ form.non_field_errors }}
@@ -15,5 +15,5 @@
   <button type="submit">Log in <span aria-hidden="true">&rarr;</span></button>
 </form>
 <p class="auth-switch">New to Keel? <a href="{% url 'register' %}">Create an account</a></p>
-<p class="auth-footnote">Your references. Your progress. Your own pace.</p>
+<p class="auth-footnote">Bon Voyage</p>
 {% endblock %}
