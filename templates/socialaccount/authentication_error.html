@@ -1,0 +1,2 @@
+{% extends 'registration/auth_base.html' %}
+{% block auth_content %}<h2 id="auth-heading">Google sign-in didn’t finish.</h2><p class="auth-subtitle">Please try again. If this keeps happening, check the Google client credentials and authorized callback URL.</p><a href="{% url 'login' %}">Back to login</a>{% endblock %}

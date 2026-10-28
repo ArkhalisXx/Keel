@@ -24,7 +24,7 @@ from datetime import timedelta
 def register(request):
     form = UserCreationForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
-        login(request, form.save())
+        login(request, form.save(), backend='django.contrib.auth.backends.ModelBackend')
         return redirect('dashboard')
     return render(request, 'registration/register.html', {'form':form})
 

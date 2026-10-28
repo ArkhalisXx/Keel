@@ -1,0 +1,2 @@
+{% extends 'registration/auth_base.html' %}
+{% block auth_content %}<h2 id="auth-heading">Finish your Google account.</h2><p class="auth-subtitle">If this email already belongs to a Keel account, use that account’s username and password to keep your existing progress.</p><form method="post" class="auth-form">{% csrf_token %}{{ form.as_p }}<button type="submit" class="voyage-submit">Create workspace</button></form><a href="{% url 'login' %}">Back to login</a>{% endblock %}

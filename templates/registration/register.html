@@ -1,6 +1,7 @@
 {% extends 'registration/auth_base.html' %}
 {% block auth_content %}
 <p class="eyebrow">CHART YOUR OWN COURSE</p><h2 id="auth-heading">Create your workspace.</h2><p class="auth-subtitle">Make room for your next horizon.</p>
+{% include 'registration/google_sign_in.html' %}
 <form method="post" class="auth-form">{% csrf_token %}{{ form.non_field_errors }}
 {% for field in form %}<div class="auth-field">{{ field.label_tag }}{% if field.field.widget.input_type == 'password' %}<div class="voyage-password">{{ field }}<button class="password-toggle" type="button" aria-controls="{{ field.auto_id }}" aria-label="Show {{ field.label|lower }}" aria-pressed="false" data-password-toggle>Show</button></div>{% else %}{{ field }}{% endif %}{{ field.errors }}
 {% if field.help_text %}<div class="helptext"{% if field.auto_id %} id="{{ field.auto_id }}_helptext"{% endif %}>{{ field.help_text|safe }}</div>{% endif %}</div>{% endfor %}

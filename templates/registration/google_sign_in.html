@@ -1,0 +1,8 @@
+{% if google_login_enabled %}
+<form method="post" action="{% url 'google_login' %}" class="google-sign-in">
+  {% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <button type="submit"><span aria-hidden="true" class="google-mark">G</span> Continue with Google</button>
+</form>
+<div class="auth-divider"><span>or use your username</span></div>
+{% endif %}
