@@ -1,8 +1,52 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block content %}
-<div class="page-heading"><div><p class="eyebrow">FROM PAPER TO PRACTICE</p><h1>Your exam papers</h1><p>Add a paper or study document. Get a question-and-answer reviewer, then publish it to Practice.</p></div><a class="button secondary" href="{% url 'library' %}">Upload a paper →</a></div>
-<div class="grid">
-<section class="card"><h2>Create a reviewer or import a paper</h2><p>Upload your PDF, DOCX or TXT in Library and wait for Ready, then select it here. Automatic mode imports an exam’s printed questions; if none are found, it generates an AI reviewer. AI generation uses your configured provider and API quota.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button>Create question set</button></form><div class="format-hint"><strong>Supported paper format</strong><p>Numbered questions with A–D choices, including multiline choices. An optional “Answer Key” section can supply answers. Missing keys are left blank.</p><p>Printed answer keys are used directly. Missing answers stay in drafts; the editor remains optional for answered questions. This does not certify a paper as an official PRC exam.</p></div></section>
-<section class="card"><h2>Imported papers</h2>{% for paper in papers %}<article class="document"><h3><a href="{% url 'paper_detail' paper.pk %}">{{ paper.title }}</a></h3><p>{{ paper.topic }} · {{ paper.question_count }} questions · {{ paper.published_count }} published</p><a href="{% url 'paper_detail' paper.pk %}">Review question set →</a></article>{% empty %}<div class="empty-state"><h3>Your practice bank starts here.</h3><p>Import a mock paper to extract its questions. Publish the answered questions together when you are ready.</p></div>{% endfor %}</section>
+<link rel="stylesheet" href="{% static 'papers.css' %}">
+<div class="page-heading paper-page-heading"><div><p class="eyebrow">YOUR PRACTICE STUDIO</p><h1>Turn your sources into study sessions.</h1><p>Bring a mock exam, a chapter, or a topic. Build a question set and publish it to your private Practice bank.</p></div><a class="button secondary" href="{% url 'library' %}">↑ Upload a document</a></div>
+<div class="paper-workspace-stats" aria-label="Your question collection"><div><span>Question sets</span><strong>{{ paper_stats.total|default:0 }}</strong></div><div><span>Total questions</span><strong>{{ paper_stats.questions|default:0 }}</strong></div><div><span>Published to Practice</span><strong>{{ paper_stats.published|default:0 }}</strong></div><p><span class="paper-live-dot" aria-hidden="true"></span> Your sources. Your pace.</p></div>
+<div class="paper-workspace">
+<section class="card paper-builder" aria-labelledby="builder-heading">
+  <div class="paper-section-heading"><span class="paper-section-icon" aria-hidden="true">✦</span><div><p class="eyebrow">BUILD SOMETHING TO STUDY</p><h2 id="builder-heading">Create a question set</h2></div></div>
+  <form method="post" class="paper-builder-form" data-paper-builder data-source-url-template="{% url 'paper_source' 0 %}">
+    {% csrf_token %}{{ form.non_field_errors }}
+    <fieldset class="paper-step"><legend><span>01</span> Choose your source</legend>
+      <div class="paper-field"><label for="{{ form.document.id_for_label }}">Document</label>{{ form.document }}{{ form.document.errors }}<small>Choose a ready document from your <a href="{% url 'library' %}">Library</a>.</small><p class="paper-source-status" data-source-status aria-live="polite">{% if not form.document.field.queryset.exists %}No ready documents yet. Upload one in Library and wait for processing to finish.{% else %}Select a document to see its available chapters and pages.{% endif %}</p></div>
+    </fieldset>
+    <fieldset class="paper-step"><legend><span>02</span> Make it your way</legend>
+      <div class="paper-field"><label for="{{ form.kind.id_for_label }}">Create from this document</label>{{ form.kind }}{{ form.kind.errors }}<small data-mode-description>Automatic imports printed exam questions when available, or generates an AI reviewer from your notes.</small></div>
+      <div data-reviewer-controls>
+        <div class="paper-field"><label for="{{ form.question_count.id_for_label }}">How many reviewer questions?</label><div class="paper-count-control">{{ form.question_count }}<span>questions · 1–100</span></div>{{ form.question_count.errors }}<div class="paper-count-presets" aria-label="Quick question counts"><button class="secondary" type="button" data-question-count="10">10</button><button class="secondary" type="button" data-question-count="25">25</button><button class="secondary" type="button" data-question-count="50">50</button><button class="secondary" type="button" data-question-count="100">100</button></div><small>Generated in small batches. Larger sets use more API quota and take longer.</small></div>
+      </div>
+    </fieldset>
+    <fieldset class="paper-step" data-reviewer-controls><legend><span>03</span> Focus your reviewer <em>Optional</em></legend>
+      <div class="paper-field" data-chapter-field hidden><label for="paper-chapter">Choose a chapter or section</label><select id="paper-chapter" data-chapter-select><option value="">All readable pages</option></select><small>Detected headings are suggestions. Check the page range against your document.</small></div>
+      <div class="paper-field"><label for="{{ form.focus.id_for_label }}">Topic or chapter keywords</label>{{ form.focus }}{{ form.focus.errors }}<small>For example: buoyancy, transverse stability, or chapter 3. Questions use matching source passages.</small></div>
+      <div class="paper-page-range"><div class="paper-field"><label for="{{ form.page_start.id_for_label }}">From page</label>{{ form.page_start }}{{ form.page_start.errors }}</div><span aria-hidden="true">→</span><div class="paper-field"><label for="{{ form.page_end.id_for_label }}">To page</label>{{ form.page_end }}{{ form.page_end.errors }}</div></div><small class="paper-field-note">Physical document pages, which can differ from printed page numbers. Leave both blank to use all pages. Choosing a focus in Automatic mode generates an AI reviewer.</small>
+    </fieldset>
+    <fieldset class="paper-step"><legend><span>04</span> Name your question set</legend><div class="paper-field"><label for="{{ form.title.id_for_label }}">Title</label>{{ form.title }}{{ form.title.errors }}</div><div class="paper-field"><label for="{{ form.topic.id_for_label }}">Topic label</label>{{ form.topic }}{{ form.topic.errors }}<small>Used to organize and filter your Practice bank.</small></div></fieldset>
+    <div class="paper-build-summary"><span class="eyebrow">YOUR NEXT STUDY SESSION</span><p data-build-summary>Select a source and choose how you want to study.</p><small>AI-generated answers need checking against the source. Generation uses your configured AI provider.</small></div>
+    <button class="paper-create-button" type="submit" data-create-button>Create question set <span aria-hidden="true">→</span></button>
+  </form>
+  <details class="paper-format-details"><summary>How imports and AI reviewers work</summary><p>Exam imports extract numbered A–D questions, including multiline choices. A printed answer key supplies answers directly; questions without keys stay in drafts.</p><p>AI reviewers create new questions from relevant excerpts within your chosen pages. A focused reviewer can cover a topic or chapter. Source coverage depends on the available readable text.</p><p>Publish answered questions together, then study with flashcards. The editor remains available for individual changes. Imported papers are not certified as official PRC exams.</p></details>
+</section>
+<section class="paper-collection" aria-labelledby="collection-heading">
+  <div class="paper-collection-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="collection-heading">Your question sets</h2></div><span class="count">{{ papers.paginator.count|default:0 }} sets</span></div>
+  <form method="get" class="paper-collection-filter" aria-label="Filter question sets"><label class="paper-filter-search">Search sets<input type="search" name="paper_search" value="{{ paper_search }}" placeholder="Search a title or topic…"></label><label>Type<select name="paper_kind"><option value="">All types</option><option value="exam" {% if paper_kind == 'exam' %}selected{% endif %}>Exam papers</option><option value="reviewer" {% if paper_kind == 'reviewer' %}selected{% endif %}>AI reviewers</option></select></label><button class="secondary" type="submit">Filter</button>{% if paper_search or paper_kind %}<a href="{% url 'import_paper' %}" class="paper-clear-filter">Clear</a>{% endif %}</form>
+  <div class="paper-collection-cards">
+    {% for paper in papers %}
+    <article class="card paper-set-card">
+      <div class="paper-card-top"><span class="paper-kind-label">{% if paper.kind == 'reviewer' %}✦ AI reviewer{% else %}▤ Exam paper{% endif %}</span><span class="status-pill" data-state="{{ paper.generation_status }}">{{ paper.get_generation_status_display }}</span></div>
+      <h3><a href="{% url 'paper_detail' paper.pk %}">{{ paper.title }}</a></h3><p class="paper-set-topic">{{ paper.topic }}</p>
+      {% if paper.document %}<p class="paper-source-name">↳ {{ paper.document.title }}</p>{% endif %}
+      {% if paper.generation_focus %}<p class="paper-scope-chip">Focus: {{ paper.generation_focus }}</p>{% endif %}{% if paper.source_page_start or paper.source_page_end %}<p class="paper-scope-chip">Pages {{ paper.source_page_start|default:'start' }}–{{ paper.source_page_end|default:'end' }}</p>{% endif %}
+      {% if paper.kind == 'reviewer' and paper.generation_status != 'ready' %}<div class="paper-card-progress"><label for="paper-progress-{{ paper.pk }}">{{ paper.generated_count }} of {{ paper.requested_count }} questions prepared</label><progress id="paper-progress-{{ paper.pk }}" value="{{ paper.generated_count }}" max="{{ paper.requested_count }}"></progress></div>{% endif %}
+      <div class="paper-card-counts"><span><strong>{{ paper.question_count }}</strong> questions</span><span><strong>{{ paper.published_count }}</strong> published</span></div>
+      <div class="paper-card-actions"><a class="button secondary" href="{% url 'paper_detail' paper.pk %}">{% if paper.generation_status == 'ready' %}Review question set{% else %}View progress{% endif %} <span aria-hidden="true">→</span></a><a class="paper-delete-link" href="{% url 'delete_paper' paper.pk %}" aria-label="Delete {{ paper.title }}">Delete</a></div>
+    </article>
+    {% empty %}<div class="card empty-state paper-collection-empty"><span class="empty-symbol" aria-hidden="true">▤</span><h3>{% if paper_search or paper_kind %}No matching question sets{% else %}A fresh start for your practice.{% endif %}</h3><p>{% if paper_search or paper_kind %}Try a different search or clear the filters.{% else %}Choose a document to build your first set. Your exam papers and AI reviewers will appear here.{% endif %}</p></div>{% endfor %}
+  </div>
+  {% include 'learning/pagination.html' with page=paper_page %}
+</section>
 </div>
+<script src="{% static 'papers.js' %}" defer></script>
 {% endblock %}

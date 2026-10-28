@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'papers.css' %}">
+<div class="page-heading"><div><p class="eyebrow">YOUR PAPERS / DELETE</p><h1>Delete this question set?</h1><p>Review what will be removed before continuing.</p></div><a class="button secondary" href="{% url 'paper_detail' paper.pk %}">Keep this paper</a></div>
+<section class="card paper-delete-card" aria-labelledby="delete-paper-title">
+  <span class="status-pill" data-state="failed">Permanent deletion</span>
+  <h2 id="delete-paper-title">{{ paper.title }}</h2>
+  <p>{{ paper.topic }}{% if paper.document %} · {{ paper.document.title }}{% endif %}</p>
+  <div class="paper-impact-grid" aria-label="Deletion impact">
+    <div><strong>{{ question_count }}</strong><span>questions removed</span></div>
+    <div><strong>{{ attempt_count }}</strong><span>practice attempts removed</span></div>
+    <div><strong>{{ session_count }}</strong><span>flashcard sessions removed</span></div>
+  </div>
+  <div class="notice paper-danger"><strong>This changes your analytics.</strong><p>The paper’s questions and your answers to them will be removed from Practice. Their attempts will no longer count toward your totals, accuracy, topic performance, or activity chart.</p><p>Any flashcard session containing these questions will also be deleted, including its saved progress and session results. Your original uploaded document stays in Library. This action cannot be undone.</p></div>
+  <form method="post">
+    {% csrf_token %}
+    {% if confirmation_error %}<p class="errorlist" role="alert">{{ confirmation_error }}</p>{% endif %}
+    <label class="paper-delete-check"><input type="checkbox" name="confirm_delete" value="yes" required> <span>I understand that deleting this paper also removes its questions, my practice attempts, and affected flashcard sessions from Practice and analytics.</span></label>
+    <div class="paper-actions"><button class="paper-danger" type="submit">Delete paper and practice history</button><a class="button secondary" href="{% url 'paper_detail' paper.pk %}">Cancel, keep paper</a></div>
+  </form>
+</section>
+{% endblock %}

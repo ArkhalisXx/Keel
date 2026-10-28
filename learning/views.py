@@ -3,6 +3,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.http import FileResponse, JsonResponse
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from .forms import UploadForm, TutorForm
@@ -180,7 +181,9 @@ def question(request, pk):
         if value not in ['0','1','2','3']:
             messages.error(request,'Choose an answer first.')
         else:
-            attempt = Attempt.objects.create(owner=request.user,question=q,selected_index=int(value),correct=int(value)==q.correct_index)
+            with transaction.atomic():
+                q = get_object_or_404(visible_questions(request.user).select_for_update(of=('self',)), pk=pk)
+                attempt = Attempt.objects.create(owner=request.user,question=q,selected_index=int(value),correct=int(value)==q.correct_index)
             return redirect('result', pk=attempt.pk)
     return render(request,'learning/question.html',{'q':q,'choices':enumerate(q.choices)})
 

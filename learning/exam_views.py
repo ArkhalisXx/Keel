@@ -1,15 +1,17 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.db import transaction
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from .reviewers import create_reviewer, queue_reviewer
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .exam_forms import PaperImportForm, QuestionReviewForm
+from .assistant import AIError
 from .exams import PaperImportError, import_document
-from .models import ExamPaper, Question
+from .models import Document, ExamPaper, Question
 
 PAPER_SORTS = {'original': ('position', 'pk'), 'topic': ('topic', 'position', 'pk'),
                'drafts': ('reviewed', 'position', 'pk'), 'published': ('-reviewed', 'position', 'pk')}
@@ -28,22 +30,50 @@ def import_paper(request):
     if request.method == 'POST' and form.is_valid():
         try:
             kind = form.cleaned_data.get('kind') or 'auto'
-            if kind == 'reviewer':
-                paper, created = create_reviewer(request.user, form.cleaned_data['document'], form.cleaned_data['title'], form.cleaned_data['topic'], form.cleaned_data.get('question_count') or 5)
+            scope = {key: form.cleaned_data.get(key) for key in ('focus', 'page_start', 'page_end')}
+            scoped = bool(form.cleaned_data.get('focus') or request.POST.get('page_start') or request.POST.get('page_end'))
+            if kind == 'reviewer' or (kind == 'auto' and scoped):
+                paper, created = create_reviewer(request.user, form.cleaned_data['document'], form.cleaned_data['title'], form.cleaned_data['topic'], form.cleaned_data.get('question_count') or 20, **scope)
             else:
                 try:
                     paper, created = import_document(request.user, form.cleaned_data['document'], form.cleaned_data['title'], form.cleaned_data['topic'])
                 except PaperImportError as error:
                     if kind != 'auto' or not str(error).startswith('No complete'):
                         raise
-                    paper, created = create_reviewer(request.user, form.cleaned_data['document'], form.cleaned_data['title'], form.cleaned_data['topic'], form.cleaned_data.get('question_count') or 5)
-        except PaperImportError as error:
+                    paper, created = create_reviewer(request.user, form.cleaned_data['document'], form.cleaned_data['title'], form.cleaned_data['topic'], form.cleaned_data.get('question_count') or 20, **scope)
+        except (PaperImportError, AIError) as error:
             form.add_error('document', str(error))
         else:
             messages.success(request, 'Reviewer generation queued. You can publish when it is ready.' if paper.kind == 'reviewer' and created else 'Question set ready. Publish answered questions together, or use the editor.')
             return redirect('paper_detail', pk=paper.pk)
-    papers = ExamPaper.objects.filter(owner=request.user).annotate(question_count=Count('questions'), published_count=Count('questions', filter=Q(questions__reviewed=True)))
-    return render(request, 'learning/import_paper.html', {'form': form, 'papers': papers})
+    owned = ExamPaper.objects.filter(owner=request.user)
+    stats = owned.aggregate(total=Count('pk', distinct=True), question_total=Count('questions'),
+                            published=Count('questions', filter=Q(questions__reviewed=True)))
+    stats['questions'] = stats.pop('question_total')
+    search = request.GET.get('paper_search', '').strip()[:200]
+    paper_kind = request.GET.get('paper_kind', '')
+    if paper_kind not in ('exam', 'reviewer'):
+        paper_kind = ''
+    papers = owned.select_related('document').annotate(question_count=Count('questions'), published_count=Count('questions', filter=Q(questions__reviewed=True)))
+    if search:
+        papers = papers.filter(Q(title__icontains=search) | Q(topic__icontains=search) | Q(document__title__icontains=search))
+    if paper_kind:
+        papers = papers.filter(kind=paper_kind)
+    page = Paginator(papers.order_by('-created_at', '-pk'), 8).get_page(request.GET.get('page'))
+    return render(request, 'learning/import_paper.html', {
+        'form': form, 'papers': page, 'paper_page': page, 'paper_stats': stats,
+        'paper_search': search, 'paper_kind': paper_kind})
+
+
+@login_required
+@require_GET
+def paper_source(request, pk):
+    """Private document structure only; source text is never exposed by this endpoint."""
+    from .reviewer_sources import available_page_bounds, document_outline
+    document = get_object_or_404(Document, pk=pk, owner=request.user, status=Document.Status.READY)
+    first, last = available_page_bounds(document)
+    return JsonResponse({'title': document.title, 'page_min': first, 'page_max': last,
+                         'chapters': document_outline(document)})
 
 
 @login_required
@@ -90,7 +120,8 @@ def publish_paper(request, pk):
 @login_required
 def reviewer_status(request, pk):
     paper=get_object_or_404(ExamPaper,pk=pk,owner=request.user)
-    return JsonResponse({'status':paper.generation_status,'error':paper.generation_error,'can_retry':paper.can_retry_generation})
+    return JsonResponse({'status':paper.generation_status,'error':paper.generation_error,'can_retry':paper.can_retry_generation,
+                         'generated_count':paper.generated_count,'requested_count':paper.requested_count})
 
 
 @login_required
@@ -103,8 +134,9 @@ def retry_reviewer(request, pk):
                 count = int(request.POST.get('question_count') or paper.requested_count)
             except (ValueError,TypeError):
                 count = 0
-            if not 1 <= count <= 10:
-                messages.error(request,'Choose between 1 and 10 reviewer questions.')
+            minimum = max(1, paper.generated_count)
+            if not minimum <= count <= 100:
+                messages.error(request,f'Choose between {minimum} and 100 reviewer questions. Completed questions are kept.')
             else:
                 paper.requested_count = count
                 paper.save(update_fields=['requested_count'])

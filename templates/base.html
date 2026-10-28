@@ -19,8 +19,8 @@
   <nav aria-label="Main navigation">
     <a href="{% url 'dashboard' %}" {% if current == 'dashboard' %}aria-current="page"{% endif %}>Overview</a>
     <a href="{% url 'library' %}" {% if current == 'library' %}aria-current="page"{% endif %}>Library</a>
-    <a href="{% url 'import_paper' %}" {% if current == 'import_paper' or current == 'paper_detail' or current == 'review_question' %}aria-current="page"{% endif %}>Exam papers</a>
-    <a href="{% url 'practice' %}" {% if current == 'practice' or current == 'question' or current == 'result' %}aria-current="page"{% endif %}>Practice</a>
+    <a href="{% url 'import_paper' %}" {% if current == 'import_paper' or current == 'paper_detail' or current == 'review_question' or current == 'delete_paper' %}aria-current="page"{% endif %}>Exam papers</a>
+    <a href="{% url 'practice' %}" {% if current == 'practice' or current == 'question' or current == 'result' or current == 'practice_run' %}aria-current="page"{% endif %}>Practice</a>
     <a href="{% url 'assistant' %}" {% if current == 'assistant' or current == 'tutor' %}aria-current="page"{% endif %}>AI tutor</a>
   </nav>
   {% endwith %}

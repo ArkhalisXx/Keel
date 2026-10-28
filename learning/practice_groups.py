@@ -147,6 +147,7 @@ def grouped_library(request):
 
 @login_required
 @require_POST
+@transaction.atomic
 def start_practice(request):
     try:
         data = signing.loads(request.POST.get('group', ''), salt=GROUP_SIGNING_SALT, max_age=86400)
@@ -156,6 +157,11 @@ def start_practice(request):
         filters = _filters(data.get('filters', {}))
     except (signing.BadSignature, ValueError, TypeError):
         return HttpResponseBadRequest('This practice link is invalid or expired. Open Practice and select the group again.')
+    if 'paper' in identity:
+        # Deletion takes this lock too. Recheck visibility only after locking,
+        # rather than saving snapshots selected before a paper was removed.
+        get_object_or_404(ExamPaper.objects.select_for_update(),
+                          pk=identity['paper'], owner=request.user)
     # The signed descriptor is only a selector. Access is always rechecked now.
     candidates = _questions(request.user, filters).select_related('paper', 'source_document').order_by('position', 'pk')
     if 'paper' in identity:

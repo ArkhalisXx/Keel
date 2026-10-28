@@ -4,15 +4,42 @@ from .models import Document, Question
 
 class PaperImportForm(forms.Form):
     kind = forms.ChoiceField(label='Create from this document', initial='auto', choices=[('auto', 'Automatic: import a paper or generate a reviewer'), ('exam', 'Import an exam paper and its answer key'), ('reviewer', 'Generate a Q&A reviewer from notes / a textbook')], required=False)
-    question_count = forms.IntegerField(label='AI reviewer questions', initial=5, min_value=1, max_value=10, required=False, help_text='Used only for AI reviewers. Start with 5 for a quicker response.')
+    question_count = forms.IntegerField(label='AI reviewer questions', initial=20, min_value=1, max_value=100, required=False, help_text='1–100 questions, generated in small background batches. Larger sets use more API quota.')
 
     title = forms.CharField(max_length=200, help_text='A name for this practice paper.')
     topic = forms.CharField(max_length=120, help_text='For example: Hydrostatics or Ship Construction.')
     document = forms.ModelChoiceField(queryset=Document.objects.none(), help_text='Upload the paper in Library first and wait until it is Ready.')
+    focus = forms.CharField(label='Topic or chapter keywords', max_length=240, required=False,
+                           help_text='Optional: use words found in the document, such as transverse stability.',
+                           widget=forms.TextInput(attrs={'placeholder': 'e.g. Buoyancy, transverse stability'}))
+    page_start = forms.IntegerField(label='From page', min_value=1, required=False,
+                                   help_text='Document page number, starting at 1; printed page labels can differ.')
+    page_end = forms.IntegerField(label='To page', min_value=1, required=False)
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['document'].queryset = Document.objects.filter(owner=user, status=Document.Status.READY).defer('pages').order_by('title', 'pk')
+
+    def clean(self):
+        cleaned = super().clean()
+        # Exam imports retain the paper's full numbering and answer-key sections.
+        if cleaned.get('kind') == 'exam':
+            cleaned.update(focus='', page_start=None, page_end=None)
+            return cleaned
+        document = cleaned.get('document')
+        if document and not any(field in self.errors for field in ('focus', 'page_start', 'page_end')):
+            from .assistant import AIError
+            from .reviewer_sources import select_sources, validate_scope
+            try:
+                focus, start, end = validate_scope(document, focus=cleaned.get('focus', ''),
+                                                  page_start=cleaned.get('page_start'), page_end=cleaned.get('page_end'))
+                if focus:
+                    select_sources(document, focus=focus, page_start=start, page_end=end)
+            except AIError as error:
+                self.add_error(None, str(error))
+            else:
+                cleaned.update(focus=focus, page_start=start, page_end=end)
+        return cleaned
 
 
 class QuestionReviewForm(forms.ModelForm):

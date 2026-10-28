@@ -1,11 +1,13 @@
 from django.urls import path
-from . import views, assistant_views, exam_views, practice_groups, practice_ai
+from . import views, assistant_views, exam_views, practice_groups, practice_ai, paper_deletion
 urlpatterns = [
     path('practice/start/',practice_groups.start_practice,name='start_practice'),
     path('practice/sessions/<int:pk>/',practice_groups.practice_run,name='practice_run'),
     path('practice/sessions/<int:pk>/help/',practice_ai.practice_card_help,name='practice_card_help'),
 
     path('papers/<int:pk>/publish/',exam_views.publish_paper,name='publish_paper'),
+    path('papers/source/<int:pk>/',exam_views.paper_source,name='paper_source'),
+    path('papers/<int:pk>/delete/',paper_deletion.delete_paper,name='delete_paper'),
     path('papers/<int:pk>/generation/',exam_views.reviewer_status,name='reviewer_status'),
     path('papers/<int:pk>/retry-generation/',exam_views.retry_reviewer,name='retry_reviewer'),
 

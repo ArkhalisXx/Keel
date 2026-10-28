@@ -45,6 +45,10 @@ class ExamPaper(models.Model):
     generation_deadline = models.DateTimeField(null=True, blank=True)
     generation_error = models.TextField(blank=True)
     requested_count = models.PositiveSmallIntegerField(default=5)
+    generated_count = models.PositiveSmallIntegerField(default=0)
+    generation_focus = models.CharField(max_length=240, blank=True)
+    source_page_start = models.PositiveIntegerField(null=True, blank=True)
+    source_page_end = models.PositiveIntegerField(null=True, blank=True)
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     document = models.ForeignKey(Document, null=True, blank=True, on_delete=models.SET_NULL)
@@ -59,7 +63,7 @@ class ExamPaper(models.Model):
             self.generation_status in ('queued','processing') and self.generation_deadline is not None and self.generation_deadline < timezone.now()))
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['owner', 'document', 'kind'], name='one_paper_per_document_kind')]
+        constraints = [models.UniqueConstraint(fields=['owner', 'document'], condition=models.Q(kind='exam'), name='one_exam_per_owner_document')]
         ordering = ['-created_at', '-pk']
 
     def __str__(self): return self.title
