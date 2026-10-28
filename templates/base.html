@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{% static 'site.css' %}">
   <script src="{% static 'site.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'motion.css' %}">
 </head>
 <body class="{% if workspace_shell %}workspace-page {% endif %}{% block body_class %}{% endblock %}">
 {% block header %}{% if workspace_shell %}{% include 'learning/workspace_header.html' %}{% else %}<header>
