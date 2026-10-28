@@ -70,3 +70,15 @@ class WorkspaceTests(TestCase):
         response=self.client.get('/assistant/')
         self.assertNotContains(response,'</script><script>alert(1)</script>')
         self.assertContains(response,'\\u003C/script\\u003E')
+
+    def test_removed_web_session_resets_to_study_on_both_chat_surfaces(self):
+        session = self.client.session
+        session['assistant_scope'] = [self.user.pk, 'web', []]
+        session['assistant_history'] = [{'role': 'assistant', 'content': 'Old research conversation'}]
+        session.save()
+        for url in ('/', '/assistant/'):
+            response = self.client.get(url)
+            self.assertEqual(response.context['assistant_initial_state'], {'mode': 'study', 'documents': [], 'history': []})
+            self.assertNotContains(response, '<option value="web">')
+            self.assertNotContains(response, 'Web research')
+            self.assertNotContains(response, 'Old research conversation')

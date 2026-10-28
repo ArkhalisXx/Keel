@@ -2,16 +2,15 @@
 {% load static %}
 {% block content %}
 <div class="page-heading">
-  <div><p class="eyebrow">A LITTLE GUIDANCE, A CLEARER COURSE</p><h1>Your Keel assistant</h1><p>Explore a concept, work through your references, or research the web.</p></div>
+  <div><p class="eyebrow">A LITTLE GUIDANCE, A CLEARER COURSE</p><h1>Your Keel assistant</h1><p>Explore a concept or work through your own references.</p></div>
   <img class="assistant-mascot" src="{% static assistant_icon %}" width="88" height="88" alt="Keel sailboat assistant">
 </div>
 <div class="assistant-workspace">
   <section class="card assistant-main">{% include 'learning/assistant_panel.html' %}</section>
-  <aside class="card assistant-guide"><p class="eyebrow">CHOOSE YOUR SOURCES</p><h2>One companion.<br>Three ways to learn.</h2>
+  <aside class="card assistant-guide"><p class="eyebrow">CHOOSE YOUR SOURCES</p><h2>One companion.<br>Two ways to learn.</h2>
     <div class="guide-item"><span>01</span><div><h3>Study coach</h3><p>Ask for explanations, hints, or help building a study plan.</p></div></div>
     <div class="guide-item"><span>02</span><div><h3>Your documents</h3><p>Use selected private references. Inspect the cited passages and original pages.</p></div></div>
-    <div class="guide-item"><span>03</span><div><h3>Web research</h3><p>Ask the provider to search the web. Check its source links and verify engineering calculations.</p></div></div>
-    <p class="format-hint">Web mode uses the provider’s search tool. Your private document passages are sent only in document mode.</p>
+    <p class="format-hint">Choose Study coach for general learning, or My documents for explanations grounded in your references.</p>
     <a href="{% url 'library' %}">Manage your references →</a>
   </aside>
 </div>

@@ -8,7 +8,6 @@ class AssistantForm(forms.Form):
     mode = forms.ChoiceField(choices=[
         ('study', 'Study coach'),
         ('documents', 'My documents'),
-        ('web', 'Search the web'),
     ], initial='study')
     documents = forms.ModelMultipleChoiceField(
         queryset=Document.objects.none(), required=False,

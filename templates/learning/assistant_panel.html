@@ -6,7 +6,7 @@
   </div>
   <form class="chat-form" method="post" action="{% url 'assistant_chat' %}">
     {% csrf_token %}
-    <label>Learning mode<select name="mode"><option value="study">Study coach</option><option value="documents">My documents</option><option value="web">Web research</option></select></label>
+    <label>Learning mode<select name="mode"><option value="study">Study coach</option><option value="documents">My documents</option></select></label>
     <fieldset class="chat-documents" hidden><legend>Select ready references</legend>
     {% for doc in assistant_documents %}<label><input type="checkbox" name="documents" value="{{ doc.pk }}"> {{ doc.title }}</label>{% empty %}<p>No ready documents. Upload a reference in Library first.</p>{% endfor %}
     </fieldset>

@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from django.urls import path
 
-from .assistant import AIError, answer_question, safe_source_url
+from .assistant import AIError, answer_question
 from .assistant_views import assistant_chat
 from .models import Document
 
@@ -55,7 +55,7 @@ class AssistantViewTests(TestCase):
             self.assertEqual(response.status_code, 200)
         self.assertEqual(len(self.client.session['assistant_history']), 6)
         self.assertEqual(answer.call_args.kwargs['document_sources'][0]['id'], self.doc.pk)
-        self.post(mode='web', documents=[self.doc.pk], question='Find PRC requirements')
+        self.post(mode='study', documents=[self.doc.pk], question='Explain buoyancy')
         self.assertEqual(answer.call_args.kwargs['history'], [])
         self.assertEqual(answer.call_args.kwargs['document_sources'], [])
         self.post(reset=True)
@@ -77,6 +77,9 @@ class AssistantViewTests(TestCase):
     def test_invalid_json_and_mode(self):
         self.assertEqual(self.client.post('/chat/', data='[]', content_type='application/json').status_code, 400)
         self.assertEqual(self.post(mode='unknown', question='Hello').status_code, 400)
+        with patch('learning.assistant_views.answer_question') as answer:
+            self.assertEqual(self.post(mode='web', question='Hello').status_code, 400)
+            answer.assert_not_called()
 
 
     def test_real_missing_key_document_fallback_returns_local_sources(self):
@@ -100,73 +103,35 @@ class AssistantViewTests(TestCase):
 
 
 class AssistantProviderTests(TestCase):
-    def call(self, provider, response, mode='web', **kwargs):
-        env = {'AI_PROVIDER': provider, 'AI_MODEL': '', 'AI_WEB_MODEL': '', 'GEMINI_API_KEY': 'private-test-key', 'OPENAI_API_KEY': 'private-test-key'}
+    def call(self, provider, response, mode='study', **kwargs):
+        env = {'AI_PROVIDER': provider, 'AI_MODEL': '', 'GEMINI_API_KEY': 'private-test-key', 'OPENAI_API_KEY': 'private-test-key'}
         with patch.dict(os.environ, env), patch('urllib.request.urlopen') as request:
             request.return_value.__enter__.return_value = io.BytesIO(json.dumps(response).encode())
             result = answer_question('Explain buoyancy', mode=mode, **kwargs)
             payload = json.loads(request.call_args.args[0].data)
         return result, payload
 
-    def test_web_model_override_is_validated_and_only_applies_to_web(self):
-        for provider in ('gemini', 'openai'):
-            for mode in ('web', 'study', 'documents'):
-                response = ({'candidates': [{'content': {'parts': [{'text': 'Answer'}]}}]}
-                            if provider == 'gemini' else {'output': [{'content': [{'type': 'output_text', 'text': 'Answer'}]}]})
-                with self.subTest(provider=provider, mode=mode), patch.dict(os.environ, {
-                    'AI_PROVIDER': provider, 'AI_MODEL': 'standard-model', 'AI_WEB_MODEL': 'fast-search-model',
-                    'GEMINI_API_KEY': 'test-key', 'OPENAI_API_KEY': 'test-key',
-                }), patch('learning.assistant._request', return_value=response) as request:
-                    answer_question('What is a stern?', mode=mode)
-                    expected = 'fast-search-model' if mode == 'web' else 'standard-model'
-                    if provider == 'gemini':
-                        self.assertIn(f'/models/{expected}:', request.call_args.args[0])
-                    else:
-                        self.assertEqual(request.call_args.args[2]['model'], expected)
-        with patch.dict(os.environ, {'AI_PROVIDER': 'gemini', 'GEMINI_API_KEY': 'test', 'AI_WEB_MODEL': 'https://bad/model'}), patch('learning.assistant._request') as request:
-            with self.assertRaises(AIError):
-                answer_question('Hello', mode='web')
-            request.assert_not_called()
-
-    def test_web_followups_keep_recent_context_within_budget(self):
-        history = [{'role': 'user' if i % 2 == 0 else 'assistant', 'content': str(i) * 4000} for i in range(6)]
+    def test_study_and_document_requests_never_enable_search_tools(self):
         for provider in ('gemini', 'openai'):
             response = ({'candidates': [{'content': {'parts': [{'text': 'Answer'}]}}]}
                         if provider == 'gemini' else {'output': [{'content': [{'type': 'output_text', 'text': 'Answer'}]}]})
-            _, payload = self.call(provider, response, history=history)
-            turns = payload['contents'][:-1] if provider == 'gemini' else payload['input'][:-1]
-            texts = [turn['parts'][0]['text'] if provider == 'gemini' else turn['content'] for turn in turns]
-            self.assertLessEqual(sum(map(len, texts)), 6000)
-            self.assertEqual(texts[-1], history[-1]['content'])
-            self.assertNotIn(history[0]['content'], texts)
+            source = {'id': 1, 'title': 'Notes', 'page': 1, 'text': 'PRIVATE PASSAGE'}
+            for mode in ('study', 'documents'):
+                result, payload = self.call(provider, response, mode=mode, document_sources=[source])
+                self.assertEqual(result['answer'], 'Answer')
+                self.assertNotIn('tools', payload)
+                self.assertNotIn('tool_choice', payload)
+                self.assertNotIn('include', payload)
+                self.assertEqual('PRIVATE PASSAGE' in json.dumps(payload), mode == 'documents')
+                self.assertNotIn('web_sources', result)
+                self.assertNotIn('search_suggestions_html', result)
 
-    def test_gemini_web_grounding_and_private_passage_exclusion(self):
-        response = {'candidates': [{'content': {'parts': [{'text': 'Grounded explanation'}]},
-            'groundingMetadata': {'groundingChunks': [
-                {'web': {'uri': 'https://example.org/reference', 'title': 'Reference'}},
-                {'web': {'uri': 'javascript:alert(1)', 'title': 'Bad URL'}}]}}]}
-        result, payload = self.call('gemini', response, document_sources=[{'text': 'PRIVATE EXCERPT'}])
-        self.assertEqual(payload['tools'], [{'google_search': {}}])
-        self.assertNotIn('PRIVATE EXCERPT', json.dumps(payload))
-        self.assertTrue(result['web_used'])
-        self.assertEqual(result['web_sources'], [{'url': 'https://example.org/reference', 'title': 'Reference'}])
-
-    def test_openai_web_tool_and_citations(self):
-        response = {'output': [{'type': 'message', 'content': [{'type': 'output_text', 'text': 'An explanation',
-            'annotations': [{'type': 'url_citation', 'url': 'https://example.org', 'title': 'Reference'}]}]}]}
-        result, payload = self.call('openai', response)
-        self.assertEqual(payload['tools'], [{'type': 'web_search'}])
-        self.assertEqual(payload['tool_choice'], 'required')
-        self.assertTrue(result['web_used'])
-        self.assertFalse(payload['store'])
-
-    def test_no_search_sources_do_not_claim_verified_internet_access(self):
-        result, payload = self.call('gemini', {'candidates': [{'content': {'parts': [{'text': 'An answer'}]}}]})
-        self.assertFalse(result['web_used'])
-        self.assertIn('no verifiable web source', result['warning'])
-        result, payload = self.call('gemini', {'candidates': [{'content': {'parts': [{'text': 'An answer'}]}}]}, mode='study')
-        self.assertNotIn('tools', payload)
-        self.assertEqual(result['web_sources'], [])
+    def test_removed_web_mode_is_rejected_before_any_network_request(self):
+        with patch('urllib.request.urlopen') as request:
+            with self.assertRaises(AIError) as error:
+                answer_question('Search the web', mode='web')
+            self.assertEqual(error.exception.code, 'invalid_mode')
+            request.assert_not_called()
 
     def test_provider_http_errors_never_expose_raw_body_or_key(self):
         for status in (400, 401, 403, 404, 429, 500):
@@ -178,44 +143,9 @@ class AssistantProviderTests(TestCase):
                 self.assertNotIn('PRIVATE-KEY', str(error.exception))
                 self.assertNotIn('RAW-SECRET', str(error.exception))
 
-    def test_source_url_validation(self):
-        for value in ('javascript:alert(1)', 'data:text/html,x', 'file:///etc/passwd', 'https://name:password@example.org', 'https://example.org/\nvalue'):
-            self.assertIsNone(safe_source_url(value))
-        self.assertEqual(safe_source_url('https://example.org/reference'), 'https://example.org/reference')
-
-    def test_openai_sources_reject_executable_and_credential_urls(self):
-        response = {'output': [{'type': 'message', 'content': [{'type': 'output_text', 'text': 'Answer',
-            'annotations': [
-                {'type': 'url_citation', 'url': 'javascript:alert(1)', 'title': 'Unsafe'},
-                {'type': 'url_citation', 'url': 'https://user:secret@example.org', 'title': 'Credential URL'},
-                {'type': 'url_citation', 'url': 'https://example.org/safe', 'title': 'Safe'},
-                {'type': 'url_citation', 'url': 'https://example.org/safe', 'title': 'Duplicate'},
-            ]}]}]}
-        result, payload = self.call('openai', response)
-        self.assertEqual(result['web_sources'], [{'url': 'https://example.org/safe', 'title': 'Safe'}])
-
-    def test_google_search_suggestions_only_come_from_grounding_metadata(self):
-        response = {'candidates': [{'content': {'parts': [{'text': 'Answer <b>not a search suggestion</b>'}]},
-            'groundingMetadata': {'searchEntryPoint': {'renderedContent': '<div>Google search suggestions</div>'}}}]}
-        result, payload = self.call('gemini', response)
-        self.assertEqual(result['search_suggestions_html'], '<div>Google search suggestions</div>')
-        result, payload = self.call('gemini', response, mode='study')
-        self.assertEqual(result['search_suggestions_html'], '')
-        response['candidates'][0]['groundingMetadata']['searchEntryPoint']['renderedContent'] = 'x' * 60001
-        result, payload = self.call('gemini', response)
-        self.assertEqual(result['search_suggestions_html'], '')
-        response['candidates'][0].pop('groundingMetadata')
-        result, payload = self.call('gemini', response)
-        self.assertEqual(result['search_suggestions_html'], '')
-
     def test_malformed_provider_responses_raise_safe_format_error(self):
-        malformed = [None, [], {'candidates': 'not-an-array'}, {'candidates': [None]},
-            {'candidates': [{'content': {'parts': [{'text': 12}]}}]},
-            {'candidates': [{'content': {'parts': [{'text': 'Answer'}]}, 'groundingMetadata': []}]},
-            {'candidates': [{'content': {'parts': [{'text': 'Answer'}]},
-                'groundingMetadata': {'searchEntryPoint': {'renderedContent': {'bad': 'type'}}}}]}]
-        for data in malformed:
-            with self.subTest(data=data):
-                with self.assertRaises(AIError) as error:
-                    self.call('gemini', data)
-                self.assertEqual(error.exception.code, 'response_format')
+        for data in (None, [], {'candidates': 'not-an-array'}, {'candidates': [None]},
+                     {'candidates': [{'content': {'parts': [{'text': 12}]}}]}):
+            with self.subTest(data=data), self.assertRaises(AIError) as error:
+                self.call('gemini', data)
+            self.assertEqual(error.exception.code, 'response_format')
