@@ -23,7 +23,13 @@
     const log = panel.querySelector('.chat-log');
     const feedback = panel.querySelector('.chat-feedback');
     const mode = form.elements.mode;
+    const question = form.elements.question;
     let busy = false;
+    question.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+      event.preventDefault();
+      if (!busy && !event.repeat) form.requestSubmit();
+    });
     const append = (role, text) => {
       panel.querySelector('.chat-welcome')?.remove();
       const bubble = document.createElement('article');
@@ -95,15 +101,22 @@
       e.preventDefault();if (busy) return;
       if (mode.value === 'documents' && !form.querySelector('[name=documents]:checked')) {feedback.textContent='Select at least one ready document.';return;}
       const payload = new FormData(form); const text = form.elements.question.value.trim();if (!text) return;
-      append('user',text);busy=true;form.querySelector('button[type=submit]').disabled=true;mode.disabled=true;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=true;log.setAttribute('aria-busy','true');feedback.textContent='Keel is working on your question…';
+      append('user',text);busy=true;question.readOnly=true;form.querySelector('button[type=submit]').disabled=true;mode.disabled=true;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=true;log.setAttribute('aria-busy','true');
+      const pending=append('assistant',mode.value === 'web' ? 'Searching the web and preparing an answer…' : 'Preparing your answer…');
+      pending.classList.add('chat-pending');
+      feedback.textContent=mode.value === 'web' ? 'Web research checks live sources. Study coach is quicker for general definitions.' : 'Keel is working on your question…';
+      const slowNotice=setTimeout(() => {
+        pending.querySelector('div').textContent=mode.value === 'web' ? 'Still waiting for the web-search response…' : 'Still waiting for your AI provider…';
+      },8000);
       try {
-        const data = await send(payload);const bubble=append('assistant',data.answer || 'No explanation returned.');sources(bubble,data);
+        const data = await send(payload);pending.remove();const bubble=append('assistant',data.answer || 'No explanation returned.');sources(bubble,data);
         feedback.textContent = data.warning || (data.mode === 'web' ? (data.web_used ? 'Web search returned sources.' : 'No web sources were returned.') : '');
         form.elements.question.value='';
       } catch(error) {
+        pending.remove();
         feedback.textContent=error.message;
         if (error.data?.document_sources?.length) { const bubble=append('assistant','Matching passages from your documents:'); sources(bubble,error.data); }
-      } finally {busy=false;form.querySelector('button[type=submit]').disabled=false;mode.disabled=false;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=false;log.removeAttribute('aria-busy');}
+      } finally {clearTimeout(slowNotice);busy=false;question.readOnly=false;form.querySelector('button[type=submit]').disabled=false;mode.disabled=false;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=false;log.removeAttribute('aria-busy');}
     });
   });
 })();

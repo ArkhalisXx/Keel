@@ -10,7 +10,8 @@
     <fieldset class="chat-documents" hidden><legend>Select ready references</legend>
     {% for doc in assistant_documents %}<label><input type="checkbox" name="documents" value="{{ doc.pk }}"> {{ doc.title }}</label>{% empty %}<p>No ready documents. Upload a reference in Library first.</p>{% endfor %}
     </fieldset>
-    <label class="chat-question">Your question<textarea name="question" maxlength="2000" rows="3" placeholder="Ask Keel a question…" required></textarea></label>
+    <label class="chat-question">Your question<textarea name="question" maxlength="2000" rows="3" placeholder="Ask Keel a question…" aria-describedby="chat-keyboard-hint" required></textarea></label>
+    <p class="chat-keyboard-hint" id="chat-keyboard-hint">Enter to send · Shift+Enter for a new line</p>
     <div class="chat-submit-row"><small>AI can make mistakes. Verify sources and formulas.</small><button type="submit">Send <span aria-hidden="true">↑</span></button></div>
   </form>
   <p class="chat-feedback" role="status"></p>

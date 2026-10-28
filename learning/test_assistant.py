@@ -101,12 +101,44 @@ class AssistantViewTests(TestCase):
 
 class AssistantProviderTests(TestCase):
     def call(self, provider, response, mode='web', **kwargs):
-        env = {'AI_PROVIDER': provider, 'AI_MODEL': '', 'GEMINI_API_KEY': 'private-test-key', 'OPENAI_API_KEY': 'private-test-key'}
+        env = {'AI_PROVIDER': provider, 'AI_MODEL': '', 'AI_WEB_MODEL': '', 'GEMINI_API_KEY': 'private-test-key', 'OPENAI_API_KEY': 'private-test-key'}
         with patch.dict(os.environ, env), patch('urllib.request.urlopen') as request:
             request.return_value.__enter__.return_value = io.BytesIO(json.dumps(response).encode())
             result = answer_question('Explain buoyancy', mode=mode, **kwargs)
             payload = json.loads(request.call_args.args[0].data)
         return result, payload
+
+    def test_web_model_override_is_validated_and_only_applies_to_web(self):
+        for provider in ('gemini', 'openai'):
+            for mode in ('web', 'study', 'documents'):
+                response = ({'candidates': [{'content': {'parts': [{'text': 'Answer'}]}}]}
+                            if provider == 'gemini' else {'output': [{'content': [{'type': 'output_text', 'text': 'Answer'}]}]})
+                with self.subTest(provider=provider, mode=mode), patch.dict(os.environ, {
+                    'AI_PROVIDER': provider, 'AI_MODEL': 'standard-model', 'AI_WEB_MODEL': 'fast-search-model',
+                    'GEMINI_API_KEY': 'test-key', 'OPENAI_API_KEY': 'test-key',
+                }), patch('learning.assistant._request', return_value=response) as request:
+                    answer_question('What is a stern?', mode=mode)
+                    expected = 'fast-search-model' if mode == 'web' else 'standard-model'
+                    if provider == 'gemini':
+                        self.assertIn(f'/models/{expected}:', request.call_args.args[0])
+                    else:
+                        self.assertEqual(request.call_args.args[2]['model'], expected)
+        with patch.dict(os.environ, {'AI_PROVIDER': 'gemini', 'GEMINI_API_KEY': 'test', 'AI_WEB_MODEL': 'https://bad/model'}), patch('learning.assistant._request') as request:
+            with self.assertRaises(AIError):
+                answer_question('Hello', mode='web')
+            request.assert_not_called()
+
+    def test_web_followups_keep_recent_context_within_budget(self):
+        history = [{'role': 'user' if i % 2 == 0 else 'assistant', 'content': str(i) * 4000} for i in range(6)]
+        for provider in ('gemini', 'openai'):
+            response = ({'candidates': [{'content': {'parts': [{'text': 'Answer'}]}}]}
+                        if provider == 'gemini' else {'output': [{'content': [{'type': 'output_text', 'text': 'Answer'}]}]})
+            _, payload = self.call(provider, response, history=history)
+            turns = payload['contents'][:-1] if provider == 'gemini' else payload['input'][:-1]
+            texts = [turn['parts'][0]['text'] if provider == 'gemini' else turn['content'] for turn in turns]
+            self.assertLessEqual(sum(map(len, texts)), 6000)
+            self.assertEqual(texts[-1], history[-1]['content'])
+            self.assertNotIn(history[0]['content'], texts)
 
     def test_gemini_web_grounding_and_private_passage_exclusion(self):
         response = {'candidates': [{'content': {'parts': [{'text': 'Grounded explanation'}]},

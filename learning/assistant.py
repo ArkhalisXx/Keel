@@ -148,6 +148,8 @@ def answer_question(question, *, mode='study', document_sources=None, history=No
     if not key:
         raise AIError('An AI API key is not configured. Add it privately in .env and recreate the web container. Your document passages remain available locally.', 'missing_key')
     model = os.environ.get('AI_MODEL', '').strip() or ('gemini-2.5-flash' if provider == 'gemini' else 'gpt-4.1-mini')
+    if mode == 'web':
+        model = os.environ.get('AI_WEB_MODEL', '').strip() or model
     if not re.fullmatch(r'[A-Za-z0-9._-]{1,100}', model):
         raise AIError('AI_MODEL is invalid. Use a provider model name, without a URL.', 'configuration')
     # Defense in depth: even a direct caller cannot accidentally share private
@@ -169,7 +171,8 @@ def answer_question(question, *, mode='study', document_sources=None, history=No
     elif mode == 'web':
         instructions += ('Use the provided web-search tool before answering. Base current factual claims '
             'on search results and cite sources. No private document content is available in this mode. '
-            'Prefer authoritative sources. ')
+            'Prefer authoritative sources. For a simple definition or factual question, give a concise direct '
+            'answer with citations; avoid an extended research report unless the user asks for depth. ')
     else:
         instructions += ('Use general educational knowledge. No live web search is enabled in this mode; '
             'do not claim to have searched or read selected documents. ')
@@ -181,6 +184,19 @@ def answer_question(question, *, mode='study', document_sources=None, history=No
     for item in (history or [])[-6:]:
         if item.get('role') in ('user', 'assistant') and isinstance(item.get('content'), str):
             turns.append({'role': item['role'], 'content': item['content'][:6000]})
+    if mode == 'web':
+        # Keep recent follow-up context without resending several long research
+        # reports on every search. Preserve the newest turns within a hard budget.
+        remaining = 6000
+        recent = []
+        for turn in reversed(turns):
+            content = turn['content'][:remaining]
+            if content:
+                recent.append({**turn, 'content': content})
+                remaining -= len(content)
+            if not remaining:
+                break
+        turns = list(reversed(recent))
     if provider == 'gemini':
         payload = {
             'systemInstruction': {'parts': [{'text': instructions}]},
