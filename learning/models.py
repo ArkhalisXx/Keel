@@ -39,6 +39,13 @@ class Document(models.Model):
     def __str__(self): return self.title
 
 class ExamPaper(models.Model):
+    kind = models.CharField(max_length=12, default='exam', choices=[('exam', 'Exam paper'), ('reviewer', 'AI reviewer')])
+    generation_status = models.CharField(max_length=12, default='ready', choices=[('queued','Queued'),('processing','Generating'),('ready','Ready'),('failed','Failed')])
+    generation_token = models.UUIDField(default=uuid.uuid4, editable=False)
+    generation_deadline = models.DateTimeField(null=True, blank=True)
+    generation_error = models.TextField(blank=True)
+    requested_count = models.PositiveSmallIntegerField(default=5)
+
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     document = models.ForeignKey(Document, null=True, blank=True, on_delete=models.SET_NULL)
     title = models.CharField(max_length=200)
@@ -46,8 +53,13 @@ class ExamPaper(models.Model):
     warnings = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def can_retry_generation(self):
+        return self.kind == 'reviewer' and (self.generation_status == 'failed' or (
+            self.generation_status in ('queued','processing') and self.generation_deadline is not None and self.generation_deadline < timezone.now()))
+
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['owner', 'document'], name='one_import_per_owner_document')]
+        constraints = [models.UniqueConstraint(fields=['owner', 'document', 'kind'], name='one_paper_per_document_kind')]
         ordering = ['-created_at', '-pk']
 
     def __str__(self): return self.title
@@ -76,8 +88,6 @@ class Question(models.Model):
         errors = {}
         if self.reviewed and self.correct_index is None:
             errors['correct_index'] = 'Choose the correct answer before publishing.'
-        if self.reviewed and not self.explanation.strip():
-            errors['explanation'] = 'Add a verified explanation before publishing.'
         if self.paper_id and self.owner_id != self.paper.owner_id:
             errors['owner'] = 'Imported questions must belong to the paper owner.'
         if self.source_document_id and self.owner_id != self.source_document.owner_id:

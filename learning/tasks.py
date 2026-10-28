@@ -75,3 +75,6 @@ def process_document(pk, token):
         current.filter(status=Document.Status.PROCESSING).update(
             status=Document.Status.FAILED, processing_deadline=None,
             processing_error='Document processing failed unexpectedly. Check that the worker can access the uploaded file, then retry.')
+
+# Register reviewer generation with the same Celery worker.
+from .reviewers import generate_reviewer  # noqa: E402,F401

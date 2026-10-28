@@ -120,13 +120,13 @@ class PrivateExamWorkflowTests(TestCase):
         question.refresh_from_db(); self.assertFalse(question.reviewed)
         self.assertNotIn(question, visible_questions(self.owner))
 
-    def test_publish_requires_verified_answer_and_explanation(self):
+    def test_publish_requires_answer_but_explanation_is_optional(self):
         question = self.import_paper().questions.first()
         data = self.review_data(); data['correct_index'] = ''; data['explanation'] = ''
         with patch('learning.exam_views.render', return_value=HttpResponse()) as render:
             self.client.post(f'/review/{question.pk}/', data)
             errors = render.call_args.args[2]['form'].errors
-            self.assertIn('correct_index', errors); self.assertIn('explanation', errors)
+            self.assertIn('correct_index', errors); self.assertNotIn('explanation', errors)
         question.refresh_from_db(); self.assertFalse(question.reviewed)
         question.reviewed = True; question.correct_index = None
         with self.assertRaises(ValidationError): question.full_clean()

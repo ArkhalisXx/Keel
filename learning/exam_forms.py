@@ -3,6 +3,9 @@ from .models import Document, Question
 
 
 class PaperImportForm(forms.Form):
+    kind = forms.ChoiceField(label='Create from this document', initial='auto', choices=[('auto', 'Automatic: import a paper or generate a reviewer'), ('exam', 'Import an exam paper and its answer key'), ('reviewer', 'Generate a Q&A reviewer from notes / a textbook')], required=False)
+    question_count = forms.IntegerField(label='AI reviewer questions', initial=5, min_value=1, max_value=10, required=False, help_text='Used only for AI reviewers. Start with 5 for a quicker response.')
+
     title = forms.CharField(max_length=200, help_text='A name for this practice paper.')
     topic = forms.CharField(max_length=120, help_text='For example: Hydrostatics or Ship Construction.')
     document = forms.ModelChoiceField(queryset=Document.objects.none(), help_text='Upload the paper in Library first and wait until it is Ready.')
@@ -27,7 +30,8 @@ class QuestionReviewForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.order_fields(['topic', 'prompt', 'choice_a', 'choice_b', 'choice_c', 'choice_d', 'correct_index', 'explanation', 'reference'])
         self.publish = publish
-        self.fields['explanation'].required = publish
+        self.fields['explanation'].required = False
+        self.fields['explanation'].help_text = 'Optional. You can publish a question using its answer key without writing an explanation.'
         self.fields['correct_index'].required = publish
         self.fields['correct_index'].label = 'Correct answer (1=A, 2=B, 3=C, 4=D)'
         if self.instance.pk:

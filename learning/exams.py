@@ -263,7 +263,7 @@ def import_document(owner, document, title, topic):
         document = Document.objects.select_for_update().get(pk=document.pk, owner=owner)
         if document.status != Document.Status.READY:
             raise PaperImportError('Wait for document processing to finish before importing.')
-        existing = ExamPaper.objects.filter(owner=owner, document=document).first()
+        existing = ExamPaper.objects.filter(owner=owner, document=document, kind='exam').first()
         if existing:
             return existing, False
         questions, warnings = parse_paper(exam_pdf_pages(document))

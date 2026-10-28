@@ -10,7 +10,7 @@
   <button>Apply filters</button><a class="quiet-link" href="{% url 'practice' %}">Reset</a>
 </form>
 <section class="card"><div class="section-heading"><h2>Your question bank</h2><span class="count">{{ questions.paginator.count }} questions</span></div>
-{% for q in questions %}<article class="practice-row"><div><p class="eyebrow">{{ q.topic }}{% if q.paper %} / {{ q.paper.title }}{% endif %}</p><h3>{{ q.prompt|truncatechars:240 }}</h3><span class="row-meta">{% if q.practice_count %}{{ q.practice_count }} attempt{{ q.practice_count|pluralize }} · {% if q.last_correct %}Last answer correct{% else %}Review needed{% endif %}{% else %}Not attempted{% endif %}</span></div><a class="button secondary" href="{% url 'question' q.pk %}">Practice →</a></article>
+{% for q in questions %}<article class="practice-row"><div><p class="eyebrow">{{ q.topic }}{% if q.paper %} / {{ q.paper.title }}{% if q.paper.kind == 'reviewer' %} · AI-generated{% endif %}{% endif %}</p><h3>{{ q.prompt|truncatechars:240 }}</h3><span class="row-meta">{% if q.practice_count %}{{ q.practice_count }} attempt{{ q.practice_count|pluralize }} · {% if q.last_correct %}Last answer correct{% else %}Review needed{% endif %}{% else %}Not attempted{% endif %}</span></div><a class="button secondary" href="{% url 'question' q.pk %}">Practice →</a></article>
 {% empty %}<div class="empty-state"><h3>No matching questions yet.</h3><p>Import a mock exam paper, review its questions, and publish them to your practice bank.</p></div>{% endfor %}
 {% include 'learning/pagination.html' with page=questions %}</section>
 {% endblock %}

@@ -1,6 +1,10 @@
 from django.urls import path
 from . import views, assistant_views, exam_views
 urlpatterns = [
+    path('papers/<int:pk>/publish/',exam_views.publish_paper,name='publish_paper'),
+    path('papers/<int:pk>/generation/',exam_views.reviewer_status,name='reviewer_status'),
+    path('papers/<int:pk>/retry-generation/',exam_views.retry_reviewer,name='retry_reviewer'),
+
     path('assistant/', assistant_views.assistant_page, name='assistant'),
     path('assistant/chat/', assistant_views.assistant_chat, name='assistant_chat'),
     path('papers/import/', exam_views.import_paper, name='import_paper'),
