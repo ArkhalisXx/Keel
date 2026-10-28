@@ -2,6 +2,13 @@
   const launcher = document.querySelector('.assistant-launcher');
   const drawer = document.querySelector('.assistant-drawer');
   let returnFocus;
+  function openDrawer() {
+    if (!drawer || !launcher) return;
+    if (drawer.hidden) returnFocus = document.activeElement;
+    drawer.hidden = false;
+    launcher.setAttribute('aria-expanded', 'true');
+    drawer.querySelector('textarea').focus();
+  }
   function closeDrawer() {
     if (!drawer) return;
     drawer.hidden = true;
@@ -10,10 +17,7 @@
   }
   launcher?.addEventListener('click', () => {
     if (!drawer.hidden) { closeDrawer(); return; }
-    returnFocus = document.activeElement;
-    drawer.hidden = false;
-    launcher.setAttribute('aria-expanded', 'true');
-    drawer.querySelector('textarea').focus();
+    openDrawer();
   });
   document.querySelector('.drawer-close')?.addEventListener('click', closeDrawer);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer && !drawer.hidden) closeDrawer(); });
@@ -110,5 +114,24 @@
       } finally {clearTimeout(slowNotice);busy=false;form.querySelector('button[type=submit]').disabled=false;mode.disabled=false;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=false;log.removeAttribute('aria-busy');}
     }
     form.addEventListener('submit', event => { event.preventDefault(); submitPrompt(); });
+    window.addEventListener('keel:ask', event => {
+      const prompt = event.detail?.question;
+      if (typeof prompt !== 'string') return;
+      openDrawer();
+      if (!prompt.trim()) return;
+      if (busy) {
+        event.preventDefault();
+        feedback.textContent='Wait for the current answer before sending another question.';
+        return;
+      }
+      if (mode.value !== 'study') {
+        mode.value='study';
+        panel.querySelector('.chat-documents').hidden=true;
+        changedScope();
+      }
+      question.value=prompt.slice(0,2000);
+      question.focus();
+      if (event.detail.submit === true) submitPrompt();
+    });
   });
 })();

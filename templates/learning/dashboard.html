@@ -1,62 +1,59 @@
 {% extends 'base.html' %}
 {% load static %}
+{% block body_class %}dashboard-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'dashboard.css' %}"><script src="{% static 'dashboard.js' %}" defer></script>{% endblock %}
+{% block header %}
+{% include 'learning/dashboard_icons.html' %}
+<a class="dash-skip-link" href="#dashboard-content">Skip to dashboard</a>
+<aside class="dash-sidebar" id="dashboard-sidebar" aria-label="Workspace navigation">
+  <a class="dash-brand" href="{% url 'dashboard' %}" aria-label="Keel home"><img src="{% static brand_logo|default:assistant_icon %}" width="60" height="60" alt=""><span>KEEL<small>Study with direction.</small></span></a>
+  <button class="dash-sidebar-close" type="button" aria-label="Close navigation" data-sidebar-close><svg><use href="#dash-close"></use></svg></button>
+  <nav class="dash-navigation" aria-label="Main navigation">
+    <a href="{% url 'dashboard' %}" aria-current="page"><svg><use href="#dash-home"></use></svg><span>Overview</span></a>
+    <a href="#study-focus" data-sidebar-link><svg><use href="#dash-focus"></use></svg><span>Study focus</span></a>
+    <a href="{% url 'import_paper' %}"><svg><use href="#dash-papers"></use></svg><span>Exam papers</span></a>
+    <a href="{% url 'practice' %}"><svg><use href="#dash-practice"></use></svg><span>Practice</span></a>
+    <a href="{% url 'assistant' %}"><svg><use href="#dash-tutor"></use></svg><span>AI tutor</span></a>
+    <a href="{% url 'library' %}"><svg><use href="#dash-library"></use></svg><span>Reference library</span></a>
+    <a href="#study-progress" data-sidebar-link><svg><use href="#dash-progress"></use></svg><span>Progress</span></a>
+  </nav>
+  <div class="dash-sidebar-bottom">
+    <img class="dash-lighthouse" src="{% static 'images/dashboard-lighthouse.png' %}" width="1024" height="1536" alt="" loading="lazy">
+    <div class="dash-sidebar-note"><strong>KEEL</strong><p>Naval Architecture &amp;<br>Marine Engineering<br><span>Your personal review workspace</span></p></div>
+  </div>
+</aside>
+<button class="dash-sidebar-backdrop" type="button" aria-label="Close navigation" data-sidebar-close hidden></button>
+<header class="dash-topbar">
+  <button class="dash-menu-toggle" type="button" aria-label="Open navigation" aria-controls="dashboard-sidebar" aria-expanded="false"><svg><use href="#dash-menu"></use></svg></button>
+  <span class="dash-topbar-tagline">Study with direction.</span>
+  <form class="dash-search" action="{% url 'practice' %}" method="get" role="search"><button class="dash-search-submit" type="submit" aria-label="Search practice topics and papers"><svg><use href="#dash-search"></use></svg></button><input id="dashboard-search" type="search" name="q" placeholder="Search topics or exam papers…" aria-label="Search topics or exam papers"><button class="dash-search-shortcut" type="button" aria-label="Focus search"><kbd>Ctrl</kbd><kbd>K</kbd></button></form>
+  <div class="dash-account-tools">
+    <details class="dash-reminders"><summary aria-label="Study reminders"><svg><use href="#dash-bell"></use></svg>{% if review_count %}<span class="dash-reminder-dot" aria-hidden="true"></span>{% endif %}</summary><div class="dash-popover"><strong>Your next study steps</strong>{% if review_count %}<a href="{% url 'practice' %}?progress=review">{{ review_count }} question{{ review_count|pluralize }} to revisit <span>→</span></a>{% else %}<p>No questions waiting for another look.</p>{% endif %}<a href="{% url 'library' %}">{{ ready_documents }} ready reference{{ ready_documents|pluralize }} <span>→</span></a><a href="#study-progress">View your practice progress <span>→</span></a></div></details>
+    <details class="dash-profile"><summary aria-label="Account menu for {{ user.username }}"><span class="dash-avatar" aria-hidden="true">{{ user.username|first|upper }}</span><span class="dash-profile-name"><strong>{{ user.username }}</strong><small>Personal account</small></span><svg class="dash-profile-chevron"><use href="#dash-chevron"></use></svg></summary><div class="dash-popover"><strong>{{ user.get_full_name|default:user.username }}</strong><p>Your private study workspace</p>{% if user.is_staff %}<a href="{% url 'admin:index' %}">Administration <span>↗</span></a>{% endif %}<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit"><svg><use href="#dash-logout"></use></svg>Log out</button></form></div></details>
+  </div>
+</header>
+{% endblock %}
 {% block content %}
-<div class="dashboard">
-  <div class="dashboard-topline">
-    <div><p class="eyebrow">YOUR PERSONAL REVIEW WORKSPACE</p><p class="dashboard-greeting">Welcome back, <strong>{{ user.username }}</strong>.</p></div>
-    <span class="workspace-badge"><span aria-hidden="true"></span> Personal workspace</span>
-  </div>
-
-  <section class="dashboard-hero" aria-labelledby="dashboard-heading">
-    <div class="hero-copy">
-      <span class="section-tag">LEARN WITH DIRECTION</span>
-      <h1 id="dashboard-heading">Your next horizon<br>starts here.</h1>
-      <p>Turn your references into understanding. Build confidence with focused practice and a study companion by your side.</p>
-      <div class="hero-actions"><a class="button" href="{% url 'practice' %}">Continue practicing <span aria-hidden="true">→</span></a><a class="button secondary" href="{% url 'import_paper' %}">Import exam paper</a></div>
+<div class="dash-workspace" id="dashboard-content" tabindex="-1">
+  <div class="dash-primary">
+    <section class="dash-hero" aria-labelledby="dashboard-heading"><div class="dash-hero-copy"><p class="dash-eyebrow">WELCOME BACK, {{ user.first_name|default:user.username|upper }}</p><h1 id="dashboard-heading">Your next<br><span>horizon</span> starts here.</h1><p class="dash-hero-description">Turn your references into understanding.<br>Build confidence with focused practice<br>and a study companion by your side.</p><div class="dash-hero-actions"><a class="dash-primary-button" href="{% if latest_run %}{% url 'practice_run' latest_run.id %}{% else %}{% url 'practice' %}{% endif %}">{% if latest_run %}Resume studying{% else %}Continue studying{% endif %}<svg><use href="#dash-arrow"></use></svg></a><a class="dash-outline-button" href="{% url 'assistant' %}" data-ask-keel><svg><use href="#dash-tutor"></use></svg>Ask Keel</a></div>{% if latest_run %}<p class="dash-resume-note">{{ latest_run.title|truncatechars:40 }} · {{ latest_run.answered }}/{{ latest_run.total }} answered</p>{% endif %}</div><blockquote class="dash-hero-quote">“Calm seas<br>do not make<br>skilled sailors.”<span></span></blockquote></section>
+    <div class="dash-tool-grid" aria-label="Study tools">
+      <a class="dash-tool dash-tool-blue" href="#study-focus"><span class="dash-tool-icon"><svg><use href="#dash-library"></use></svg></span><div><h2>Study focus</h2><p>{% if review_count %}Revisit {{ review_count }} question{{ review_count|pluralize }} and strengthen your understanding.{% else %}Choose your next step and build a steady study rhythm.{% endif %}</p></div><span class="dash-tool-arrow"><svg><use href="#dash-arrow"></use></svg></span></a>
+      <a class="dash-tool dash-tool-teal" href="{% url 'import_paper' %}"><span class="dash-tool-icon"><svg><use href="#dash-papers"></use></svg></span><div><h2>Exam papers</h2><p>Turn your papers and notes into focused question sets.</p></div><span class="dash-tool-arrow"><svg><use href="#dash-arrow"></use></svg></span></a>
+      <a class="dash-tool dash-tool-orange" href="{% url 'practice' %}"><span class="dash-tool-icon"><svg><use href="#dash-practice"></use></svg></span><div><h2>Practice</h2><p>Study with flashcards and track your accuracy.</p></div><span class="dash-tool-arrow"><svg><use href="#dash-arrow"></use></svg></span></a>
+      <a class="dash-tool dash-tool-purple" href="{% url 'assistant' %}"><span class="dash-tool-icon"><svg><use href="#dash-tutor"></use></svg></span><div><h2>AI tutor</h2><p>Ask Keel anything. Get clear, focused explanations.</p></div><span class="dash-tool-arrow"><svg><use href="#dash-arrow"></use></svg></span></a>
     </div>
-    <div class="hero-companion">
-      <div class="companion-orbit" aria-hidden="true"><img src="{% static assistant_icon %}" alt="" width="120" height="120"></div>
-      <div><span class="companion-label">YOUR STUDY COMPANION</span><h2>A little guidance.<br>A clearer course.</h2><p>Ask a question, explore a reference, or work through a problem with your assistant.</p><a href="{% url 'assistant' %}" class="companion-link">Meet your AI assistant <span aria-hidden="true">→</span></a></div>
+    <div class="dash-lower-grid">
+      <section class="dash-panel dash-recent" aria-labelledby="recent-heading"><div class="dash-panel-heading"><h2 id="recent-heading"><svg><use href="#dash-practice"></use></svg>Recent practice</h2><a href="{% url 'practice' %}">Go to Practice <svg><use href="#dash-arrow"></use></svg></a></div><div class="dash-recent-list">{% for a in recent %}<a class="dash-recent-row" href="{% url 'result' a.pk %}"><span class="dash-result-symbol {% if a.correct %}dash-result-correct{% else %}dash-result-incorrect{% endif %}" aria-label="{% if a.correct %}Correct{% else %}Review needed{% endif %}"><svg><use href="{% if a.correct %}#dash-check{% else %}#dash-cross{% endif %}"></use></svg></span><span class="dash-recent-copy"><strong>{{ a.question.topic }}</strong><small>{{ a.question.prompt|truncatechars:56 }}</small></span><span class="dash-recent-time">{{ a.created_at|timesince }} ago</span></a>{% empty %}<div class="dash-empty"><span class="dash-empty-symbol"><svg><use href="#dash-practice"></use></svg></span><h3>Your first session starts here.</h3><p>Answer a question and your recent practice will appear here.</p><a href="{% url 'practice' %}">Explore your practice bank <span>→</span></a></div>{% endfor %}</div></section>
+      <section class="dash-panel dash-quick" id="study-focus" tabindex="-1" aria-labelledby="quick-heading"><div class="dash-panel-heading"><h2 id="quick-heading"><svg><use href="#dash-link"></use></svg>Quick access</h2></div><div class="dash-quick-grid"><a href="{% url 'library' %}"><svg><use href="#dash-library"></use></svg><span>Reference library</span><svg class="dash-small-arrow"><use href="#dash-arrow"></use></svg></a><a href="{% url 'library' %}?q=formula"><svg><use href="#dash-formula"></use></svg><span>Find formulas</span><svg class="dash-small-arrow"><use href="#dash-arrow"></use></svg></a><a href="{% url 'library' %}?q=code"><svg><use href="#dash-code"></use></svg><span>Find codes &amp; rules</span><svg class="dash-small-arrow"><use href="#dash-arrow"></use></svg></a><a href="{% url 'practice' %}"><svg><use href="#dash-layers"></use></svg><span>Practice bank</span><svg class="dash-small-arrow"><use href="#dash-arrow"></use></svg></a></div><div class="dash-focus-note"><span class="dash-focus-marker"></span><p>{% if review_count %}<strong>Your next step:</strong> <a href="{% url 'practice' %}?progress=review">Revisit {{ review_count }} question{{ review_count|pluralize }} you last missed →</a>{% elif unattempted_count %}<strong>A fresh challenge:</strong> <a href="{% url 'practice' %}?progress=new">Try {{ unattempted_count }} unanswered question{{ unattempted_count|pluralize }} →</a>{% elif not ready_documents %}<strong>Start with a source:</strong> <a href="{% url 'library' %}">Upload your notes or a textbook →</a>{% else %}<strong>Keep moving:</strong> <a href="{% url 'import_paper' %}">Create a reviewer from your references →</a>{% endif %}</p></div></section>
     </div>
-  </section>
-
-  <div class="dashboard-metrics" aria-label="Your study statistics">
-    <section class="metric-card"><div class="metric-heading"><span>Reference library</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H4zM13 7a3 3 0 0 1 3-3h4v14h-3a4 4 0 0 0-4 3"/></svg></span></div><strong>{{ documents }}</strong><p>{{ ready_documents }} ready for study</p></section>
-    <section class="metric-card"><div class="metric-heading"><span>Questions answered</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 12 3 3 5-6"/></svg></span></div><strong>{{ total }}</strong><p>Across your practice sessions</p></section>
-    <section class="metric-card"><div class="metric-heading"><span>Practice accuracy</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="m12 12 8-8M17 4h3v3"/></svg></span></div><strong>{% if accuracy is not None %}{{ accuracy }}<small>%</small>{% else %}—{% endif %}</strong><p>{% if total %}Based on your recorded answers{% else %}Answer a question to begin{% endif %}</p></section>
-    <section class="metric-card"><div class="metric-heading"><span>Practice bank</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v14H4zM7 3h10v4M8 11h8M8 15h5"/></svg></span></div><strong>{{ question_count }}</strong><p>{{ paper_count }} imported exam paper{{ paper_count|pluralize }}</p></section>
+    <div class="dash-account-summary" aria-label="Workspace totals"><span><strong>{{ documents }}</strong> reference{{ documents|pluralize }}</span><span><strong>{{ question_count }}</strong> practice question{{ question_count|pluralize }}</span><span><strong>{{ total }}</strong> answer{{ total|pluralize }} recorded</span></div>
   </div>
-
-  <div class="dashboard-analysis">
-    <section class="dashboard-panel activity-panel" aria-labelledby="activity-heading">
-      <div class="dashboard-panel-heading"><div><p class="eyebrow">SMALL STEPS, STEADY PROGRESS</p><h2 id="activity-heading">Your study rhythm</h2></div><span class="period-label">Last 7 days</span></div>
-      <p class="panel-description">Questions answered each day</p>
-      <div class="activity-chart" role="list" aria-label="Practice activity over the last seven days">
-        {% for day in chart_days %}<div class="chart-day" role="listitem" aria-label="{{ day.label }}: {{ day.count }} questions answered"><span class="chart-count">{{ day.count }}</span><div class="chart-track"><div class="chart-fill" style="--bar-height:{{ day.height }}%"></div></div><span class="chart-label" aria-hidden="true">{{ day.label }}</span></div>{% endfor %}
-      </div>
-      {% if not total %}<p class="chart-note">Your first practice question starts the story.</p>{% endif %}
-    </section>
-    <section class="dashboard-panel topic-panel" aria-labelledby="topics-heading">
-      <div class="dashboard-panel-heading"><div><p class="eyebrow">KNOW WHERE YOU STAND</p><h2 id="topics-heading">Topic confidence</h2></div></div>
-      {% for topic in topics_progress %}<div class="topic-progress"><div><span>{{ topic.topic }}</span><strong>{{ topic.accuracy }}%</strong></div><progress max="100" value="{{ topic.accuracy }}" aria-label="{{ topic.topic }} accuracy">{{ topic.accuracy }}%</progress><p>{{ topic.total }} answer{{ topic.total|pluralize }} recorded</p></div>{% empty %}<div class="dashboard-empty"><span class="empty-glyph" aria-hidden="true">◎</span><h3>Find your starting point.</h3><p>Complete a few practice questions to see your accuracy by topic.</p><a href="{% url 'practice' %}">Start a practice session →</a></div>{% endfor %}
-    </section>
-  </div>
-
-  <section class="dashboard-panel" aria-labelledby="tools-heading">
-    <div class="dashboard-panel-heading"><div><p class="eyebrow">MAKE YOUR NEXT MOVE</p><h2 id="tools-heading">Your study toolkit</h2></div></div>
-    <div class="toolkit-grid">
-      <a href="{% url 'library' %}" class="toolkit-card"><span class="toolkit-number">01 / COLLECT</span><h3>Build your library <span aria-hidden="true">→</span></h3><p>Bring your textbooks and notes into one private workspace.</p></a>
-      <a href="{% url 'import_paper' %}" class="toolkit-card"><span class="toolkit-number">02 / PREPARE</span><h3>Import a mock paper <span aria-hidden="true">→</span></h3><p>Turn uploaded exam papers into draft questions you can review.</p></a>
-      <a href="{% url 'assistant' %}" class="toolkit-card"><span class="toolkit-number">03 / UNDERSTAND</span><h3>Talk it through <span aria-hidden="true">→</span></h3><p>Work through a concept with your AI study companion.</p></a>
-    </div>
-  </section>
-
-  <div class="dashboard-bottom">
-    <section class="dashboard-panel recent-panel" aria-labelledby="recent-heading">
-      <div class="dashboard-panel-heading"><h2 id="recent-heading">Recent practice</h2><a href="{% url 'practice' %}" class="quiet-link">Practice room →</a></div>
-      {% for a in recent %}<a class="recent-attempt" href="{% url 'result' a.pk %}"><span class="attempt-symbol {% if a.correct %}attempt-correct{% endif %}" aria-hidden="true">{% if a.correct %}✓{% else %}↻{% endif %}</span><div><span class="recent-topic">{{ a.question.topic }}</span><h3>{{ a.question.prompt|truncatechars:85 }}</h3></div><span class="attempt-result">{% if a.correct %}Correct{% else %}Review needed{% endif %}</span></a>{% empty %}<div class="recent-empty"><p>No practice history yet. Each question you answer will appear here with its result.</p></div>{% endfor %}
-    </section>
-    <section class="dashboard-panel continue-panel"><p class="eyebrow">BACK TO YOUR REFERENCES</p><h2>Keep the learning going.</h2>{% if latest_document %}<p>Your latest ready reference</p><h3 class="latest-reference">{{ latest_document.title }}</h3><a class="button secondary" href="{% url 'assistant' %}">Study with your assistant →</a>{% else %}<p>Add your first document and create a foundation for your next study session.</p><a class="button secondary" href="{% url 'library' %}">Add a reference →</a>{% endif %}</section>
+  <div class="dash-right-rail">
+    <section class="dash-panel dash-progress" id="study-progress" tabindex="-1" aria-labelledby="progress-heading"><div class="dash-panel-heading"><h2 id="progress-heading"><svg><use href="#dash-progress"></use></svg>Your study progress</h2><a href="{% url 'practice' %}?view=questions">View practice <svg><use href="#dash-arrow"></use></svg></a></div><div class="dash-progress-content"><div class="dash-accuracy-ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="dash-ring-track" cx="60" cy="60" r="50"/><circle class="dash-ring-value" cx="60" cy="60" r="50" stroke-dasharray="314.159" stroke-dashoffset="{{ accuracy_ring_offset }}"/></svg><div><strong>{% if accuracy is not None %}{{ accuracy }}<small>%</small>{% else %}—{% endif %}</strong><span>Practice accuracy</span></div></div><div class="dash-topic-list">{% for topic in topics_progress|slice:':4' %}<div class="dash-topic"><div><span>{{ topic.topic }}</span><strong>{{ topic.accuracy }}%</strong></div><progress max="100" value="{{ topic.accuracy }}" aria-label="{{ topic.topic }} practice accuracy">{{ topic.accuracy }}%</progress></div>{% empty %}<div class="dash-progress-empty"><strong>A clearer picture, one answer at a time.</strong><p>Practice to see your accuracy by topic.</p><a href="{% url 'practice' %}">Start practicing →</a></div>{% endfor %}</div></div><p class="dash-progress-caption">{% if total %}Based on {{ total }} recorded answer{{ total|pluralize }} · Accuracy, not exam readiness{% else %}Your progress begins with your first answer.{% endif %}</p></section>
+    <section class="dash-panel dash-momentum" aria-labelledby="momentum-heading"><div class="dash-panel-heading"><h2 id="momentum-heading"><svg><use href="#dash-target"></use></svg>Keep the momentum</h2><span>{{ active_days }}/{{ weekly_goal }} days</span></div><div class="dash-week" aria-label="Practice days this week">{% for day in week_days %}<div class="dash-week-day{% if day.active %} is-active{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.is_future %} is-future{% endif %}" aria-label="{{ day.label }}: {{ day.count }} answers{% if day.is_today %}, today{% endif %}"><span>{% if day.active %}<svg aria-hidden="true"><use href="#dash-check"></use></svg>{% elif day.is_today %}<small>Today</small>{% else %}<i aria-hidden="true"></i>{% endif %}</span><small>{{ day.label }}</small></div>{% endfor %}</div><p class="dash-momentum-caption">A little practice each day goes a long way.</p></section>
+    <section class="dash-panel dash-ask" aria-labelledby="ask-heading"><div class="dash-ask-heading"><img src="{% static assistant_icon %}" width="44" height="44" alt=""><h2 id="ask-heading">Ask Keel</h2><span><i aria-hidden="true"></i>AI study tutor</span></div><p>Your AI study companion for Naval Architecture and Marine Engineering.</p><div class="dash-prompts"><button type="button" data-keel-prompt="Explain the initial stability of a ship in simple terms."><svg><use href="#dash-tutor"></use></svg>Explain the stability of a ship</button><button type="button" data-keel-prompt="Help me understand the main MARPOL annexes and their purpose."><svg><use href="#dash-focus"></use></svg>Help me understand MARPOL</button><button type="button" data-keel-prompt="Give me a practice question about marine diesel engines and help me work through it."><svg><use href="#dash-practice"></use></svg>Practice a marine engines question</button><button type="button" data-keel-prompt="Help me plan a focused review session for naval architecture and marine engineering."><svg><use href="#dash-papers"></use></svg>Plan my next review session</button></div><form class="dash-ask-form" action="{% url 'assistant' %}" method="get"><label class="dash-visually-hidden" for="dashboard-question">Ask Keel a question</label><input id="dashboard-question" name="question" type="text" maxlength="2000" placeholder="Ask a question…" required autocomplete="off"><button type="submit" aria-label="Send question to Keel"><svg><use href="#dash-arrow"></use></svg></button></form><a class="dash-open-tutor" href="{% url 'assistant' %}">Open your tutor workspace <svg><use href="#dash-arrow"></use></svg></a></section>
   </div>
 </div>
 {% endblock %}
+{% block footer %}<footer class="dash-footer"><span>KEEL · Study with direction.</span><span>Personal review workspace · Independent of PRC</span></footer>{% endblock %}

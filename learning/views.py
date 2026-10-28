@@ -30,11 +30,18 @@ def register(request):
 
 @login_required
 def dashboard(request):
+    from .models import PracticeRun
+
     attempts = Attempt.objects.filter(owner=request.user)
     total = attempts.count()
     today = timezone.localdate()
     start = today - timedelta(days=6)
-    daily = {row['day']: row['count'] for row in attempts.filter(created_at__date__gte=start).annotate(day=TruncDate('created_at')).values('day').annotate(count=Count('pk'))}
+    week_start = today - timedelta(days=today.weekday())
+    daily = {
+        row['day']: row['count'] for row in attempts.filter(
+            created_at__date__gte=min(start, week_start), created_at__date__lte=today,
+        ).annotate(day=TruncDate('created_at')).values('day').annotate(count=Count('pk'))
+    }
     peak = max(daily.values(), default=1) or 1
     chart = []
     for offset in range(7):
@@ -42,13 +49,42 @@ def dashboard(request):
         count = daily.get(date, 0)
         chart.append({'label': date.strftime('%a'), 'count': count, 'height': round(100 * count / peak)})
     topics = list(attempts.values('question__topic').annotate(total=Count('pk'), correct=Count('pk', filter=Q(correct=True))).order_by('question__topic')[:6])
+    topics_progress = [
+        {'topic': row['question__topic'], 'total': row['total'], 'accuracy': round(100 * row['correct'] / row['total'])}
+        for row in topics
+    ]
+    accuracy = round(100 * attempts.filter(correct=True).count() / total) if total else None
+    week_days = []
+    for offset in range(7):
+        date = week_start + timedelta(days=offset)
+        count = daily.get(date, 0)
+        week_days.append({
+            'label': date.strftime('%a'), 'date': date, 'count': count,
+            'is_today': date == today, 'is_future': date > today,
+            'active': bool(count) and date <= today,
+        })
+    # Match Practice's filters: an old wrong answer is no longer a review item
+    # after this account subsequently answers the same question correctly.
+    last_attempt = attempts.filter(question_id=OuterRef('pk')).order_by('-created_at', '-pk')
+    available = visible_questions(request.user).annotate(last_correct=Subquery(last_attempt.values('correct')[:1]))
+    run = PracticeRun.objects.filter(owner=request.user, completed=False).only(
+        'pk', 'title', 'questions', 'results',
+    ).order_by('-created_at', '-pk').first()
+    latest_run = ({'id': run.pk, 'title': run.title, 'answered': len(run.results), 'total': len(run.questions)}
+                  if run and run.questions else None)
     documents = Document.objects.filter(owner=request.user)
     return render(request, 'learning/dashboard.html', {
         'documents': documents.count(), 'ready_documents': documents.filter(status=Document.Status.READY).count(),
-        'total': total, 'accuracy': round(100 * attempts.filter(correct=True).count() / total) if total else None,
-        'recent': attempts.select_related('question').order_by('-created_at')[:5],
-        'question_count': visible_questions(request.user).count(), 'paper_count': ExamPaper.objects.filter(owner=request.user).count(),
-        'chart_days': chart, 'topics_progress': [{'topic': row['question__topic'], 'total': row['total'], 'accuracy': round(100*row['correct']/row['total'])} for row in topics],
+        'total': total, 'accuracy': accuracy,
+        'accuracy_ring_offset': round(314.159265 * (1 - (accuracy or 0) / 100), 3),
+        'recent': attempts.select_related('question').order_by('-created_at', '-pk')[:4],
+        'question_count': available.count(), 'paper_count': ExamPaper.objects.filter(owner=request.user).count(),
+        'review_count': available.filter(last_correct=False).count(),
+        'unattempted_count': available.filter(last_correct__isnull=True).count(),
+        'chart_days': chart, 'topics_progress': topics_progress,
+        'focus_topic': min(topics_progress, key=lambda topic: (topic['accuracy'], -topic['total'])) if topics_progress else None,
+        'week_days': week_days, 'active_days': sum(day['active'] for day in week_days), 'weekly_goal': 7,
+        'latest_run': latest_run,
         'latest_document': documents.filter(status=Document.Status.READY).defer('pages').order_by('-created_at').first(),
     })
 

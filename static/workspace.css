@@ -13,3 +13,5 @@
 .flashcard-preferences{padding:12px 15px;border:1px solid #2f465f;border-radius:9px;background:#102238;margin-bottom:18px}.flashcard-preferences .reveal-toggle{max-width:none}.flashcard-controls{justify-content:flex-end}
 
 .chat-keyboard-hint{font-size:10px;color:#8fa9c4;margin:-5px 0 14px}.chat-pending{border-style:dashed;color:#a9cce4}.chat-pending>div{font-size:13px!important}
+
+.quiet-link{font-size:10px;text-decoration:none;white-space:nowrap;color:#8cb8d5}
