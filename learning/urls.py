@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views, assistant_views, exam_views, practice_groups, practice_ai, paper_deletion
+from . import views, assistant_views, exam_views, practice_groups, practice_ai, paper_deletion, progress_views
 urlpatterns = [
+    path('progress/', progress_views.progress, name='progress'),
     path('practice/start/',practice_groups.start_practice,name='start_practice'),
     path('practice/sessions/<int:pk>/',practice_groups.practice_run,name='practice_run'),
     path('practice/sessions/<int:pk>/help/',practice_ai.practice_card_help,name='practice_card_help'),

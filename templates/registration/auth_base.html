@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
-{% block body_class %}auth-page{% endblock %}
+{% load static %}
+{% block body_class %}auth-page auth-voyage{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'auth.css' %}"><script src="{% static 'auth.js' %}" defer></script>{% endblock %}
 {% block content %}
-<div class="auth-layout">
-  <section class="auth-story" aria-label="About Keel">
-    <p class="eyebrow">Fullfill your dreams</p>
-    <h1>Keel Believes<br>You Believe</h1>
-    <p class="auth-story-copy">I believe in you</p>
-    <div class="auth-story-bottom"><span class="auth-rule" aria-hidden="true"></span><span>Set Sail</span></div>
-  </section>
-  <section class="auth-panel" aria-labelledby="auth-heading">
+<div class="voyage-layout">
+  <section class="voyage-story" aria-label="Welcome to Keel"><div class="voyage-story-copy"><p class="eyebrow">LEARN WITH DIRECTION</p><h1>Your next<br><span>horizon</span> starts here.</h1><p>A personal workspace for Naval Architecture and Marine Engineering board exam preparation.</p></div><div class="voyage-story-bottom"><span>Keel Believes. You Believe.</span><p>Bring your references. Build your understanding. Set sail.</p></div></section>
+  <section class="voyage-panel" aria-labelledby="auth-heading">
+    <div class="voyage-panel-brand"><img src="{% static brand_logo|default:'images/assistant-boat.png' %}" width="45" height="45" alt=""><div><strong>KEEL</strong><span>Study with direction.</span></div></div>
+    <nav class="voyage-tabs" aria-label="Account access"><a href="{% url 'login' %}" {% if request.resolver_match.url_name == 'login' %}aria-current="page"{% endif %}>Log in</a><a href="{% url 'register' %}" {% if request.resolver_match.url_name == 'register' %}aria-current="page"{% endif %}>Create account</a></nav>
     {% block auth_content %}{% endblock %}
+    <p class="voyage-private">Your references, questions, and study progress stay in your own workspace.</p>
   </section>
 </div>
+<div class="voyage-features" aria-label="Your study tools"><div><span>01</span><p><strong>Your reference library</strong>Textbooks and notes in one place.</p></div><div><span>02</span><p><strong>Practice with purpose</strong>Question sets and flashcards.</p></div><div><span>03</span><p><strong>A little help from Keel</strong>Explanations grounded in your learning.</p></div></div>
 {% endblock %}

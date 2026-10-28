@@ -32,7 +32,7 @@ class SiteShellTests(TestCase):
 
     def test_every_learning_screen_uses_the_correct_shared_navigation(self):
         pages = [
-            ('dashboard', [], 'overview'), ('library', [], 'library'),
+            ('dashboard', [], 'overview'), ('library', [], 'library'), ('progress', [], 'progress'),
             ('import_paper', [], 'papers'), ('paper_detail', [self.paper.pk], 'papers'),
             ('review_question', [self.question.pk], 'papers'), ('delete_paper', [self.paper.pk], 'papers'),
             ('practice', [], 'practice'), ('question', [self.question.pk], 'practice'),
@@ -49,7 +49,7 @@ class SiteShellTests(TestCase):
                 self.assertContains(response, 'class="dash-topbar"', count=1)
                 self.assertContains(response, 'aria-current="page"', count=1)
                 self.assertContains(response, 'id="workspace-content"')
-                self.assertContains(response, '/#study-progress')
+                self.assertContains(response, '/progress/')
                 self.assertNotContains(response, 'Study focus')
                 self.assertNotContains(response, 'study-focus')
 

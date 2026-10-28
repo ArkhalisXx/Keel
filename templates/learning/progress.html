@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'progress.css' %}"><script src="{% static 'progress.js' %}" defer></script>{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">A CLEARER PICTURE OF YOUR JOURNEY</p><h1>Your study progress</h1><p>Look back at your practice, discover patterns, and choose what to work on next.</p></div><a class="button secondary" href="{% url 'practice' %}">Continue practicing →</a></div>
+<section class="card analytics-controls" aria-labelledby="date-filter-heading">
+  <div class="section-heading"><div><h2 id="date-filter-heading">Choose your dates</h2><p>Week, month, year, or a range of your own.</p></div><span class="analytics-timezone">{{ analytics_timezone }}</span></div>
+  <form method="get" data-analytics-filter>{{ filter_form.non_field_errors }}
+    <div class="analytics-filter-grid"><label>View by{{ filter_form.period }}{{ filter_form.period.errors }}</label>
+    <label data-period-control="week">A day in the week{{ filter_form.date }}{{ filter_form.date.errors }}</label>
+    <label data-period-control="month">Month{{ filter_form.month }}{{ filter_form.month.errors }}</label>
+    <label data-period-control="year">Year{{ filter_form.year }}{{ filter_form.year.errors }}</label>
+    <label data-period-control="range">From{{ filter_form.start }}{{ filter_form.start.errors }}</label>
+    <label data-period-control="range">Through{{ filter_form.end }}{{ filter_form.end.errors }}</label>
+    <button>Show analytics</button></div>
+  </form>
+  <nav class="analytics-presets" aria-label="Quick date views"><a href="?period=week">This week</a><a href="?period=month">This month</a><a href="?period=year">This year</a><a href="?period=range">Last 30 days</a></nav>
+</section>
+{% if start_date %}
+<div class="analytics-period-heading"><div><p class="eyebrow">YOUR SELECTED PERIOD</p><h2>{{ start_date|date:'j M Y' }} — {{ end_date|date:'j M Y' }}</h2></div><div class="analytics-date-nav">{% if navigation.previous %}<a href="?{{ navigation.previous }}" aria-label="Previous period">← Previous</a>{% endif %}{% if navigation.next %}<a href="?{{ navigation.next }}" aria-label="Next period">Next →</a>{% endif %}</div></div>
+<div class="analytics-summary" aria-label="Practice statistics for selected dates">
+ <div><span class="analytics-stat-icon"><svg aria-hidden="true"><use href="#dash-practice"></use></svg></span><strong>{{ summary.total }}</strong><span>answers recorded</span></div>
+ <div><span class="analytics-stat-icon"><svg aria-hidden="true"><use href="#dash-target"></use></svg></span><strong>{% if accuracy is not None %}{{ accuracy }}<small>%</small>{% else %}—{% endif %}</strong><span>practice accuracy</span></div>
+ <div><span class="analytics-stat-icon"><svg aria-hidden="true"><use href="#dash-focus"></use></svg></span><strong>{{ active_days }}</strong><span>active study days</span></div>
+ <div><span class="analytics-stat-icon"><svg aria-hidden="true"><use href="#dash-layers"></use></svg></span><strong>{{ summary.questions }}</strong><span>distinct questions practiced</span></div>
+</div>
+<section class="card analytics-chart-card" aria-labelledby="activity-heading"><div class="section-heading"><div><p class="eyebrow">YOUR PRACTICE RHYTHM</p><h2 id="activity-heading">Questions answered over time</h2></div><div class="analytics-legend"><span>Correct</span><span>Incorrect</span></div></div>
+<div class="analytics-chart-scroll" tabindex="0" role="region" aria-label="Scrollable activity chart"><div class="analytics-chart" style="--column-count:{{ chart|length }}">{% for bar in chart %}<a class="analytics-bar" href="?{{ bar.query }}" aria-label="{{ bar.start|date:'j M Y' }} through {{ bar.end|date:'j M Y' }}: {{ bar.total }} answers, {{ bar.correct }} correct" title="{{ bar.start|date:'j M' }}–{{ bar.end|date:'j M' }}: {{ bar.total }} answers · {{ bar.correct }} correct"><span class="analytics-bar-value">{{ bar.total }}</span><span class="analytics-bar-track"><span class="analytics-bar-fill" style="height:{{ bar.height }}%"><span style="height:{{ bar.correct_percent }}%"></span></span></span><span class="analytics-bar-label">{{ bar.label }}</span></a>{% endfor %}</div></div>
+{% if summary.total %}<p class="analytics-caption">Select a bar to explore its dates. Accuracy describes recorded answers, rather than exam readiness.</p>{% else %}<div class="analytics-empty"><h3>No practice recorded in these dates.</h3><p>Choose a different period or start a practice session to build your history.</p><a href="{% url 'practice' %}">Go to Practice →</a></div>{% endif %}</section>
+<div class="analytics-details-grid">
+<section class="card"><div class="section-heading"><div><p class="eyebrow">KNOW WHERE YOU STAND</p><h2>Accuracy by topic</h2></div></div>{% for topic in topics %}<a class="analytics-topic" href="{% url 'practice' %}?topic={{ topic.question__topic|urlencode }}"><div><strong>{{ topic.question__topic }}</strong><span>{{ topic.accuracy }}%</span></div><progress max="100" value="{{ topic.accuracy }}" aria-label="{{ topic.question__topic }} accuracy">{{ topic.accuracy }}%</progress><small>{{ topic.correct }} correct / {{ topic.total }} answers · Practice this topic →</small></a>{% empty %}<p class="analytics-caption">Your topic breakdown will appear after you practice in this period.</p>{% endfor %}</section>
+<section class="card"><div class="section-heading"><div><p class="eyebrow">YOUR HISTORY, DAY BY DAY</p><h2>Dated activity</h2></div><span class="count">{{ date_rows.paginator.count }} active days</span></div><div class="analytics-table-scroll"><table class="analytics-table"><caption class="sr-only">Practice results by date for your selected period</caption><thead><tr><th scope="col">Date</th><th scope="col">Answers</th><th scope="col">Correct</th><th scope="col">Incorrect</th><th scope="col">Accuracy</th></tr></thead><tbody>{% for row in date_rows %}<tr><th scope="row">{{ row.day|date:'j M Y' }}</th><td>{{ row.total }}</td><td>{{ row.correct }}</td><td>{{ row.incorrect }}</td><td>{{ row.accuracy }}%</td></tr>{% empty %}<tr><td colspan="5">No activity for this period.</td></tr>{% endfor %}</tbody></table></div>{% include 'learning/pagination.html' with page=date_rows %}</section>
+</div>
+{% endif %}
+{% endblock %}

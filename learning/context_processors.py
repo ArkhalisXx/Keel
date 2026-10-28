@@ -8,7 +8,7 @@ def assistant_workspace(request):
         return branding
     current = getattr(request.resolver_match, 'url_name', '')
     sections = {
-        'dashboard': 'overview', 'library': 'library',
+        'dashboard': 'overview', 'library': 'library', 'progress': 'progress',
         'import_paper': 'papers', 'paper_detail': 'papers', 'review_question': 'papers', 'delete_paper': 'papers',
         'practice': 'practice', 'practice_run': 'practice', 'question': 'practice', 'result': 'practice',
         'assistant': 'assistant', 'tutor': 'assistant',

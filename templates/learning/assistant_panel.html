@@ -1,19 +1,21 @@
 {% load static %}
 {{ assistant_initial_state|json_script:"assistant-initial-state" }}
-<div class="assistant-panel" data-chat-url="{% url 'assistant_chat' %}">
-  <div class="chat-toolbar"><span class="badge">Keel AI</span><button class="secondary chat-reset" type="button">New chat</button></div>
+<div class="assistant-panel" data-chat-url="{% url 'assistant_chat' %}" {% if full_page %}data-reader="true"{% endif %}>
+  <div class="chat-toolbar"><span class="badge">Keel AI</span><div class="chat-toolbar-actions">{% if full_page %}<a class="tutor-toolbar-jump" href="#tutor-question" data-jump-question>Write ↓</a><button class="secondary" type="button" data-reader-width aria-pressed="false">Wide view</button>{% endif %}<button class="secondary chat-reset" type="button">New chat</button></div></div>
   <div class="chat-log" role="log" aria-label="Assistant conversation" aria-live="polite">
     <div class="chat-welcome"><img class="chat-welcome-mascot" src="{% static assistant_icon %}" alt="" width="65" height="65"><h2>What’s on your mind?</h2><p>Try “Explain metacentric height” or select a document and ask about a topic.</p></div>
   </div>
   <form class="chat-form" method="post" action="{% url 'assistant_chat' %}">
     {% csrf_token %}
+    {% if full_page %}<details class="chat-source-settings"><summary>Sources &amp; learning mode <span data-mode-label>Study coach</span></summary><div class="chat-settings-content">{% endif %}
     <label>Learning mode<select name="mode"><option value="study">Study coach</option><option value="documents">My documents</option></select></label>
     <fieldset class="chat-documents" hidden><legend>Select ready references</legend>
     {% for doc in assistant_documents %}<label><input type="checkbox" name="documents" value="{{ doc.pk }}"> {{ doc.title }}</label>{% empty %}<p>No ready documents. Upload a reference in Library first.</p>{% endfor %}
     </fieldset>
-    <label class="chat-question">Your question<textarea name="question" maxlength="2000" rows="3" placeholder="Ask Keel a question…" aria-describedby="chat-keyboard-hint" required></textarea></label>
-    <p class="chat-keyboard-hint" id="chat-keyboard-hint">Enter to send · Shift+Enter for a new line</p>
-    <div class="chat-submit-row"><small>AI can make mistakes. Verify sources and formulas.</small><button type="submit">Send <span aria-hidden="true">↑</span></button></div>
+    {% if full_page %}</div></details>{% endif %}
+    <label class="chat-question">Your question<textarea {% if full_page %}id="tutor-question"{% endif %} name="question" maxlength="2000" rows="{% if full_page %}2{% else %}3{% endif %}" placeholder="Ask Keel a question…" aria-describedby="chat-keyboard-hint" required></textarea></label>
+    <div class="chat-submit-row"><small id="chat-keyboard-hint">Enter to send · Shift+Enter for a new line</small><button type="submit">Send <span aria-hidden="true">↑</span></button></div>
+    {% if full_page %}<p class="tutor-disclaimer">AI can make mistakes. Verify important sources, formulas, and units. <a href="#" data-latest-answer>Back to latest answer ↑</a></p>{% else %}<p class="chat-keyboard-hint">AI can make mistakes. Verify sources and formulas.</p>{% endif %}
   </form>
   <p class="chat-feedback" role="status"></p>
 </div>

@@ -40,7 +40,7 @@
       bubble.className = `chat-bubble chat-${role}`;
       const heading = document.createElement('strong'); heading.textContent = role === 'user' ? 'You' : 'Keel';
       const content = document.createElement('div'); content.textContent = text;
-      bubble.append(heading, content); log.append(bubble); bubble.scrollIntoView({block: 'nearest'}); return bubble;
+      bubble.append(heading, content); log.append(bubble); bubble.scrollIntoView({block: panel.dataset.reader === 'true' && role === 'assistant' ? 'start' : 'nearest'}); return bubble;
     };
     const sourceLink = (container, text, url, external) => {
       try {
@@ -80,11 +80,16 @@
         for (const item of initial.history || []) if (['user','assistant'].includes(item.role)) append(item.role, item.content);
       }
     } catch (_) { /* Start a fresh display if there is no valid saved conversation. */ }
-    panel.querySelector('.chat-documents').hidden = mode.value !== 'documents';
+    function showMode() {
+      const label=panel.querySelector('[data-mode-label]');
+      if(label) label.textContent=mode.selectedOptions[0].textContent;
+      panel.querySelector('.chat-documents').hidden = mode.value !== 'documents';
+    }
+    showMode();
     function changedScope() {
       log.replaceChildren();feedback.textContent = 'Sources changed. Your next question starts a fresh conversation.';
     }
-    mode.addEventListener('change', () => { panel.querySelector('.chat-documents').hidden = mode.value !== 'documents'; changedScope(); });
+    mode.addEventListener('change', () => { showMode(); changedScope(); });
     panel.querySelector('.chat-documents').addEventListener('change', changedScope);
     panel.querySelector('.chat-reset').addEventListener('click', async () => {
       if (busy) return;
@@ -126,7 +131,7 @@
       }
       if (mode.value !== 'study') {
         mode.value='study';
-        panel.querySelector('.chat-documents').hidden=true;
+        showMode();
         changedScope();
       }
       question.value=prompt.slice(0,2000);

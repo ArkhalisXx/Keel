@@ -1,19 +1,8 @@
 {% extends 'registration/auth_base.html' %}
 {% block auth_content %}
-<p class="eyebrow">Aboard the ship</p>
-<h2 id="auth-heading">Login</h2>
-<p class="auth-subtitle">Future Engineer</p>
-<form method="post" class="auth-form">
-  {% csrf_token %}
-  {{ form.non_field_errors }}
-  {% for field in form %}
-  <div class="auth-field">
-    {{ field.label_tag }}{{ field }}{{ field.errors }}
-  </div>
-  {% endfor %}
-  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-  <button type="submit">Log in <span aria-hidden="true">&rarr;</span></button>
-</form>
-<p class="auth-switch">New to Keel? <a href="{% url 'register' %}">Create an account</a></p>
-<p class="auth-footnote">Bon Voyage</p>
+<p class="eyebrow">WELCOME BACK ABOARD</p><h2 id="auth-heading">Pick up your journey.</h2><p class="auth-subtitle">Your next study session is waiting.</p>
+<form method="post" class="auth-form">{% csrf_token %}{{ form.non_field_errors }}
+{% for field in form %}<div class="auth-field">{{ field.label_tag }}{% if field.field.widget.input_type == 'password' %}<div class="voyage-password">{{ field }}<button class="password-toggle" type="button" aria-controls="{{ field.auto_id }}" aria-label="Show {{ field.label|lower }}" aria-pressed="false" data-password-toggle>Show</button></div>{% else %}{{ field }}{% endif %}{{ field.errors }}</div>{% endfor %}
+{% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}<button type="submit" class="voyage-submit">Log in <span aria-hidden="true">→</span></button></form>
+<p class="auth-switch">New to Keel? <a href="{% url 'register' %}">Create your workspace</a></p><p class="voyage-bon-voyage">Bon Voyage · Your future starts with today’s practice.</p>
 {% endblock %}
