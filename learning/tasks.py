@@ -14,6 +14,8 @@ from .services import DocumentExtractionError, ProcessingCancelled, extract_page
 
 
 def dispatch_document(pk, token):
+    if settings.JOB_BACKEND == 'database':
+        return  # The in-service scheduler reads committed rows from PostgreSQL.
     try:
         process_document.apply_async(args=[pk, str(token)], task_id=str(token))
     except Exception:

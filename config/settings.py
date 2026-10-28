@@ -274,3 +274,10 @@ if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
             'max_memory_size': 2 * 1024 * 1024,
         },
     }
+
+# Optional small-site queue: one scheduler inside the Render web container.
+JOB_BACKEND = os.environ.get('JOB_BACKEND', 'celery')
+if JOB_BACKEND not in ('celery', 'database'):
+    raise ValueError('JOB_BACKEND must be celery or database.')
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])

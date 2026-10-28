@@ -1,0 +1,48 @@
+# PostgreSQL and private S3 storage are external; no paid Render worker is created.
+services:
+  - type: web
+    name: keel
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerCommand: python scripts/start_render.py
+    healthCheckPath: /health/
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_TIME_ZONE
+        value: Asia/Manila
+      - key: JOB_BACKEND
+        value: database
+      - key: DJANGO_TRUST_PROXY
+        value: "1"
+      - key: DJANGO_SECURE_COOKIES
+        value: "1"
+      - key: DJANGO_SSL_REDIRECT
+        value: "1"
+      - key: DJANGO_HSTS_SECONDS
+        value: "3600"
+      - key: DATABASE_URL
+        sync: false
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_S3_REGION_NAME
+        sync: false
+      - key: OCR_ENABLED
+        value: "0"
+      - key: DOCUMENT_MAX_UPLOAD_MB
+        value: "10"
+      - key: DOCUMENT_MAX_PDF_PAGES
+        value: "150"
+      - key: DOCUMENT_MAX_TEXT_CHARS
+        value: "1000000"
+      - key: DOCUMENT_PROCESSING_TIMEOUT
+        value: "120"
