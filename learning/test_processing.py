@@ -184,7 +184,7 @@ from django.db.migrations.executor import MigrationExecutor
 
 class MigrationPreservationTests(TransactionTestCase):
     def test_existing_documents_keep_extracted_text_and_ready_status(self):
-        target=('learning','0005_exampaper_generation_deadline')
+        target=('learning','0006_practicerun')
         try:
             executor=MigrationExecutor(connection)
             executor.migrate([('learning','0001_initial')])

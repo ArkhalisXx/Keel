@@ -102,3 +102,15 @@ class Attempt(models.Model):
     selected_index = models.PositiveSmallIntegerField()
     correct = models.BooleanField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class PracticeRun(models.Model):
+    """Owned flashcards with immutable question snapshots and submit-once answers."""
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    title = models.CharField(max_length=300)
+    questions = models.JSONField(default=list)
+    completed = models.BooleanField(default=False)
+    score = models.PositiveIntegerField(default=0)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)

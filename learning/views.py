@@ -139,6 +139,9 @@ def tutor(request):
 
 @login_required
 def practice(request):
+    if request.GET.get('view') != 'questions':
+        from .practice_groups import grouped_library
+        return grouped_library(request)
     questions = visible_questions(request.user)
     topics = list(questions.values_list('topic', flat=True).distinct().order_by('topic'))
     topic = request.GET.get('topic', '')
@@ -165,7 +168,7 @@ def practice(request):
     if sort not in sorts:
         sort = 'newest'
     page = Paginator(questions.select_related('paper').order_by(*sorts[sort]), 20).get_page(request.GET.get('page'))
-    return render(request, 'learning/practice.html', {'questions': page, 'topics': topics, 'topic': topic,
+    return render(request, 'learning/practice_questions.html', {'questions': page, 'topics': topics, 'topic': topic,
         'search': search, 'papers': papers, 'paper_id': paper_id, 'progress': progress, 'sort': sort})
 
 @login_required

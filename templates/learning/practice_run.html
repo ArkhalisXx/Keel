@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="flashcard-workspace" data-help-url="{% url 'practice_card_help' run.id %}" data-csrf="{{ csrf_token }}">
+<div class="page-heading"><div><p class="eyebrow">{% if run.completed %}SESSION COMPLETE{% else %}ONE CARD. ONE STEP FORWARD.{% endif %}</p><h1>{{ run.title }}</h1><p>{{ run.total }} questions in this collection · {{ run.answered }} answered</p></div><a class="button secondary" href="{% url 'practice' %}">All collections →</a></div>
+{% if errors %}<div class="notice" role="alert"><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>{% endif %}
+{% if run.completed %}
+<section class="session-score card"><div><p class="eyebrow">YOUR SCORE</p><strong>{{ run.score }}<span> / {{ run.total }}</span></strong></div><div><h2>{{ run.percent }}%</h2><p>You’ve reached the end of this collection.</p></div></section>
+<div class="flashcard-results">
+{% for item in items %}<details class="card result-card"><summary><span>Question {{ forloop.counter }}{% if item.number %} · {{ item.number }}{% endif %}</span><strong>{% if item.correct %}Correct{% else %}Review needed{% endif %}</strong></summary><h2>{{ item.prompt }}</h2><ol type="A" class="session-answer-list">{% for choice in item.choices %}<li class="{% if forloop.counter0 == item.correct_index %}session-correct{% elif forloop.counter0 == item.selected_index %}session-incorrect{% endif %}">{{ choice }}{% if forloop.counter0 == item.correct_index %}<strong> — Correct answer</strong>{% endif %}{% if forloop.counter0 == item.selected_index %}<span> · Your answer</span>{% endif %}</li>{% endfor %}</ol>{% if item.explanation %}<p class="answer">{{ item.explanation }}</p>{% else %}<p>Answer from the imported key; no worked explanation was supplied.</p>{% endif %}<p class="session-reference">{{ item.reference }}</p><div class="card-help"><button type="button" class="secondary card-help-button" data-card="{{ item.index }}" data-intent="explain">Ask Keel to explain</button><div class="card-help-output" role="status"></div></div></details>{% endfor %}
+</div><a class="button" href="{% url 'practice' %}">Choose your next collection →</a>
+{% else %}
+<div class="flashcard-progress"><span>Card {{ item.index|add:1 }} of {{ run.total }}</span><progress value="{{ run.answered }}" max="{{ run.total }}" aria-label="Questions answered">{{ run.answered }} / {{ run.total }}</progress><span>{{ run.answered }} answered</span></div>
+<section class="card flashcard" aria-labelledby="current-question">
+<div class="flashcard-top"><p class="eyebrow">{% if item.number %}QUESTION {{ item.number }}{% else %}QUESTION {{ item.index|add:1 }}{% endif %}</p><span class="status-pill">{% if feedback %}Answer checked{% else %}Flashcard practice{% endif %}</span></div>
+<h2 id="current-question">{{ item.prompt }}</h2>
+{% if item.ai_generated %}<p class="ocr-note">AI-generated reviewer question · Check important formulas against the original reference.</p>{% endif %}
+{% if feedback %}
+<ol type="A" class="session-answer-list">{% for choice in item.choices %}<li class="{% if forloop.counter0 == item.correct_index %}session-correct{% elif forloop.counter0 == item.selected_index %}session-incorrect{% endif %}">{{ choice }}{% if forloop.counter0 == item.correct_index %}<strong> — Correct answer</strong>{% endif %}{% if forloop.counter0 == item.selected_index %}<span> · Your answer</span>{% endif %}</li>{% endfor %}</ol>
+<div class="flashcard-feedback {% if item.correct %}feedback-correct{% else %}feedback-review{% endif %}"><strong>{% if item.correct %}That’s correct.{% else %}A good one to revisit.{% endif %}</strong>{% if item.explanation %}<p class="answer">{{ item.explanation }}</p>{% else %}<p>This answer comes from the paper’s key. Ask Keel for help understanding it.</p>{% endif %}{% if item.reference %}<p class="session-reference">{{ item.reference }}</p>{% endif %}</div>
+<form method="post" class="flashcard-next-form">{% csrf_token %}<input type="hidden" name="action" value="next"><input type="hidden" name="card" value="{{ item.index }}"><button>{% if run.answered == run.total %}See session results{% else %}Next question{% endif %} →</button></form>
+{% else %}
+<form method="post" data-flashcard-answer>{% csrf_token %}<input type="hidden" name="action" value="answer"><input type="hidden" name="card" value="{{ item.index }}">
+<div class="flashcard-preferences"><label class="reveal-toggle"><input type="checkbox" name="reveal" value="yes"> Show whether I’m correct before the next card</label></div><fieldset class="session-options"><legend class="sr-only">Choose an answer</legend>{% for choice in item.choices %}<label class="choice"><input type="radio" name="answer" value="{{ forloop.counter0 }}" required {% if item.selected_index == forloop.counter0 %}checked{% endif %}><span class="choice-letter">{% cycle 'A' 'B' 'C' 'D' %}</span><span>{{ choice }}</span></label>{% endfor %}</fieldset>
+<div class="flashcard-controls"><button class="secondary" type="submit">Answer & next →</button></div><p class="flashcard-instruction" role="status">Choose an answer to move to the next card. Enable feedback above to check your answer first.</p>
+</form>
+{% endif %}
+</section>
+<section class="card flashcard-coach"><div class="coach-heading"><img src="{% static assistant_icon %}" width="42" height="42" alt=""><div><h2>A little help from Keel</h2><p>{% if feedback %}Understand the answer, the formula, and the reasoning.{% else %}Get a short hint for this card without sending its answer key to the AI.{% endif %}</p></div></div><div class="card-help"><button type="button" class="secondary card-help-button" data-card="{{ item.index }}" data-intent="{% if feedback %}explain{% else %}hint{% endif %}">{% if feedback %}Explain this answer{% else %}Give me a hint{% endif %}</button><div class="card-help-output" role="status"></div></div><p class="privacy-note">AI help runs only when requested. Answer checking and moving between cards don’t use AI.</p></section>
+{% endif %}
+</div><script src="{% static 'flashcards.js' %}" defer></script>
+{% endblock %}

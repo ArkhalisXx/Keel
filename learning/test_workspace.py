@@ -35,12 +35,12 @@ class WorkspaceTests(TestCase):
 
     def test_practice_progress_filters_use_own_latest_attempt(self):
         Attempt.objects.create(owner=self.other,question=self.shared,selected_index=0,correct=True)
-        self.assertContains(self.client.get('/practice/?progress=new'),'Shared question')
+        self.assertContains(self.client.get('/practice/?view=questions&progress=new'),'Shared question')
         Attempt.objects.create(owner=self.user,question=self.shared,selected_index=1,correct=False)
-        self.assertContains(self.client.get('/practice/?progress=review'),'Shared question')
+        self.assertContains(self.client.get('/practice/?view=questions&progress=review'),'Shared question')
         Attempt.objects.create(owner=self.user,question=self.shared,selected_index=0,correct=True)
-        self.assertNotContains(self.client.get('/practice/?progress=review'),'Shared question')
-        self.assertContains(self.client.get('/practice/?progress=correct'),'Shared question')
+        self.assertNotContains(self.client.get('/practice/?view=questions&progress=review'),'Shared question')
+        self.assertContains(self.client.get('/practice/?view=questions&progress=correct'),'Shared question')
 
     def test_library_search_sort_status_and_file_type(self):
         for title,file,status in [('Zulu','a.pdf','ready'),('Alpha','b.txt','ready'),('Pending','c.pdf','queued')]:

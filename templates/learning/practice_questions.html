@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">PREPARE WITH PURPOSE</p><h1>Individual questions</h1><p><a href="{% url 'practice' %}">← Back to grouped practice</a></p></div><a class="button secondary" href="{% url 'import_paper' %}">Import an exam paper →</a></div>
+<form method="get" class="card question-filters">
+<input type="hidden" name="view" value="questions">
+  <label>Search<input name="q" value="{{ search }}" placeholder="Find a topic or question"></label>
+  <label>Topic<select name="topic"><option value="">All topics</option>{% for t in topics %}<option {% if t == topic %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+  <label>Paper<select name="paper"><option value="">All papers & shared bank</option>{% for p in papers %}<option value="{{ p.pk }}" {% if paper_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></label>
+  <label>Progress<select name="progress"><option value="">All questions</option><option value="new" {% if progress == 'new' %}selected{% endif %}>Not attempted</option><option value="review" {% if progress == 'review' %}selected{% endif %}>Last answer incorrect</option><option value="correct" {% if progress == 'correct' %}selected{% endif %}>Last answer correct</option></select></label>
+  <label>Sort by<select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest added</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest added</option><option value="topic" {% if sort == 'topic' %}selected{% endif %}>Topic A–Z</option><option value="paper" {% if sort == 'paper' %}selected{% endif %}>Original paper order</option><option value="least" {% if sort == 'least' %}selected{% endif %}>Least practiced</option></select></label>
+  <button>Apply filters</button><a class="quiet-link" href="{% url 'practice' %}">Reset</a>
+</form>
+<section class="card"><div class="section-heading"><h2>Your question bank</h2><span class="count">{{ questions.paginator.count }} questions</span></div>
+{% for q in questions %}<article class="practice-row"><div><p class="eyebrow">{{ q.topic }}{% if q.paper %} / {{ q.paper.title }}{% if q.paper.kind == 'reviewer' %} · AI-generated{% endif %}{% endif %}</p><h3>{{ q.prompt|truncatechars:240 }}</h3><span class="row-meta">{% if q.practice_count %}{{ q.practice_count }} attempt{{ q.practice_count|pluralize }} · {% if q.last_correct %}Last answer correct{% else %}Review needed{% endif %}{% else %}Not attempted{% endif %}</span></div><a class="button secondary" href="{% url 'question' q.pk %}">Practice →</a></article>
+{% empty %}<div class="empty-state"><h3>No matching questions yet.</h3><p>Import a mock exam paper, review its questions, and publish them to your practice bank.</p></div>{% endfor %}
+{% include 'learning/pagination.html' with page=questions %}</section>
+{% endblock %}

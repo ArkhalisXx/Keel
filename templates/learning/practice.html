@@ -1,16 +1,33 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="page-heading"><div><p class="eyebrow">PREPARE WITH PURPOSE</p><h1>Practice room</h1><p>Reviewed questions from your papers and the shared question bank.</p></div><a class="button secondary" href="{% url 'import_paper' %}">Import an exam paper →</a></div>
+<div class="page-heading"><div><p class="eyebrow">A CLEARER WAY TO PREPARE</p><h1>Your practice collections</h1><p>One document. One collection. Separate sets when your paper contains them.</p></div><a class="button secondary" href="{% url 'import_paper' %}">Add a question set →</a></div>
 <form method="get" class="card question-filters">
-  <label>Search<input name="q" value="{{ search }}" placeholder="Find a topic or question"></label>
+  <label>Search<input name="q" value="{{ search }}" placeholder="Find a document, topic or question"></label>
   <label>Topic<select name="topic"><option value="">All topics</option>{% for t in topics %}<option {% if t == topic %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
-  <label>Paper<select name="paper"><option value="">All papers & shared bank</option>{% for p in papers %}<option value="{{ p.pk }}" {% if paper_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></label>
+  <label>Document / paper<select name="paper"><option value="">All collections</option>{% for p in papers %}<option value="{{ p.pk }}" {% if paper_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></label>
   <label>Progress<select name="progress"><option value="">All questions</option><option value="new" {% if progress == 'new' %}selected{% endif %}>Not attempted</option><option value="review" {% if progress == 'review' %}selected{% endif %}>Last answer incorrect</option><option value="correct" {% if progress == 'correct' %}selected{% endif %}>Last answer correct</option></select></label>
-  <label>Sort by<select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest added</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest added</option><option value="topic" {% if sort == 'topic' %}selected{% endif %}>Topic A–Z</option><option value="paper" {% if sort == 'paper' %}selected{% endif %}>Original paper order</option><option value="least" {% if sort == 'least' %}selected{% endif %}>Least practiced</option></select></label>
-  <button>Apply filters</button><a class="quiet-link" href="{% url 'practice' %}">Reset</a>
+  <label>Sort collections<select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest added</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest added</option><option value="topic" {% if sort == 'topic' %}selected{% endif %}>Topic A–Z</option><option value="paper" {% if sort == 'paper' %}selected{% endif %}>Document / set order</option><option value="least" {% if sort == 'least' %}selected{% endif %}>Least practiced</option></select></label>
+  <button>Apply filters</button><a class="quiet-link" href="{% url 'practice' %}">Reset filters</a>
 </form>
-<section class="card"><div class="section-heading"><h2>Your question bank</h2><span class="count">{{ questions.paginator.count }} questions</span></div>
-{% for q in questions %}<article class="practice-row"><div><p class="eyebrow">{{ q.topic }}{% if q.paper %} / {{ q.paper.title }}{% if q.paper.kind == 'reviewer' %} · AI-generated{% endif %}{% endif %}</p><h3>{{ q.prompt|truncatechars:240 }}</h3><span class="row-meta">{% if q.practice_count %}{{ q.practice_count }} attempt{{ q.practice_count|pluralize }} · {% if q.last_correct %}Last answer correct{% else %}Review needed{% endif %}{% else %}Not attempted{% endif %}</span></div><a class="button secondary" href="{% url 'question' q.pk %}">Practice →</a></article>
-{% empty %}<div class="empty-state"><h3>No matching questions yet.</h3><p>Import a mock exam paper, review its questions, and publish them to your practice bank.</p></div>{% endfor %}
-{% include 'learning/pagination.html' with page=questions %}</section>
+<div class="section-heading collection-summary"><div><h2>Ready to practice</h2><p>Choose a collection and answer its questions together.</p></div><span class="count">{{ question_count }} questions · {{ groups.paginator.count }} collections</span></div>
+<div class="practice-collections">
+{% for group in groups %}
+<article class="collection-card">
+  <div class="collection-top"><span class="collection-icon" aria-hidden="true">{% if group.section %}{{ group.section }}{% else %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>{% endif %}</span><span class="status-pill">{% if group.kind == 'reviewer' %}AI reviewer{% elif group.section %}Detected set{% else %}Question collection{% endif %}</span></div>
+  <p class="eyebrow">{{ group.topic|default:'YOUR PRACTICE BANK' }}</p>
+  <h2>{% if group.section %}Set {{ group.section }}{% else %}{{ group.title }}{% endif %}</h2>
+  {% if group.section %}<p class="collection-source">{{ group.paper_title }}</p>{% endif %}
+  {% if group.document_title and group.document_title != group.paper_title %}<p class="collection-origin">Source: {{ group.document_title }}</p>{% endif %}
+  <div class="collection-stats"><div><strong>{{ group.count }}</strong><span>questions</span></div><div><strong>{{ group.attempted }}</strong><span>attempted</span></div><div><strong>{% if group.accuracy is not None %}{{ group.accuracy }}%{% else %}—{% endif %}</strong><span>latest accuracy</span></div></div>
+  <p class="collection-hint">{% if group.section %}Practice this set in its original question order.{% else %}All matching questions from this collection, in one session.{% endif %}</p>
+  <form method="post" action="{% url 'start_practice' %}">{% csrf_token %}
+    <input type="hidden" name="group" value="{{ group.key }}">
+    <input type="hidden" name="q" value="{{ search }}"><input type="hidden" name="topic" value="{{ topic }}"><input type="hidden" name="paper" value="{{ paper_id }}"><input type="hidden" name="progress" value="{{ progress }}"><input type="hidden" name="sort" value="{{ sort }}">
+    <button>Start {% if group.section %}set{% else %}collection{% endif %} <span aria-hidden="true">→</span></button>
+  </form>
+</article>
+{% empty %}<section class="card collection-empty"><h2>No matching collections yet.</h2><p>Publish a paper or reviewer to see it here. Papers with sets are split automatically.</p><a class="button secondary" href="{% url 'import_paper' %}">Create a reviewer</a></section>{% endfor %}
+</div>
+{% include 'learning/pagination.html' with page=groups %}
+<p class="individual-view-link"><a href="{% url 'practice' %}?view=questions">Browse individual questions instead →</a></p>
 {% endblock %}
