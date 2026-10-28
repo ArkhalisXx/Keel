@@ -36,7 +36,15 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or _key_file.read_text().strip(
 # SECURITY WARNING: don't run with debug turned on in production!
 
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]').split(',')
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get(
+    'DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]').split(',') if host.strip()]
+# Railway probes use this host; keep host validation enabled for all other requests.
+if os.environ.get('RAILWAY_ENVIRONMENT_ID'):
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
+    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '').strip()
+    if railway_domain:
+        ALLOWED_HOSTS.append(railway_domain)
+
 
 
 # Application definition
@@ -158,7 +166,23 @@ DOCUMENT_MAX_TEXT_CHARS = int(os.environ.get('DOCUMENT_MAX_TEXT_CHARS', '2000000
 if min(DOCUMENT_MAX_UPLOAD_MB, DOCUMENT_MAX_PDF_PAGES, DOCUMENT_MAX_TEXT_CHARS) <= 0:
     raise ValueError('Document limits must be positive integers.')
 
-if os.environ.get('POSTGRES_HOST'):
+if os.environ.get('DATABASE_URL'):
+    from urllib.parse import urlsplit, unquote, parse_qs
+    database_url = urlsplit(os.environ['DATABASE_URL'])
+    if database_url.scheme not in ('postgres', 'postgresql') or not database_url.hostname:
+        raise ValueError('DATABASE_URL must be a PostgreSQL URL.')
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': unquote(database_url.path.lstrip('/')),
+        'USER': unquote(database_url.username or ''),
+        'PASSWORD': unquote(database_url.password or ''),
+        'HOST': database_url.hostname,
+        'PORT': database_url.port or 5432,
+        'CONN_MAX_AGE': 60,
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {'sslmode': parse_qs(database_url.query).get('sslmode', ['prefer'])[0]},
+    }
+elif os.environ.get('POSTGRES_HOST'):
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('POSTGRES_DB', 'keel'),
@@ -226,3 +250,27 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = False
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = False
 SOCIALACCOUNT_AUTO_SIGNUP = True
 ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Enable only behind Railway's trusted TLS-terminating proxy.
+if os.environ.get('DJANGO_TRUST_PROXY', '0') == '1':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_REDIRECT_EXEMPT = [r'^health/$']
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
+
+# Private object storage allows separate web and worker services to read uploads.
+# Leave unset for existing local Docker volumes and development uploads.
+if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': os.environ['AWS_STORAGE_BUCKET_NAME'],
+            'access_key': os.environ['AWS_ACCESS_KEY_ID'],
+            'secret_key': os.environ['AWS_SECRET_ACCESS_KEY'],
+            'endpoint_url': os.environ.get('AWS_S3_ENDPOINT_URL') or None,
+            'region_name': os.environ.get('AWS_S3_REGION_NAME', 'auto'),
+            'default_acl': None,
+            'querystring_auth': True,
+            'file_overwrite': False,
+            'max_memory_size': 2 * 1024 * 1024,
+        },
+    }
