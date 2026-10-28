@@ -1,0 +1,30 @@
+{% load static %}
+
+{% include 'learning/dashboard_icons.html' %}
+<a class="dash-skip-link" href="#workspace-content">Skip to content</a>
+<aside class="dash-sidebar" id="dashboard-sidebar" aria-label="Workspace navigation">
+  <a class="dash-brand" href="{% url 'dashboard' %}" aria-label="Keel home"><img src="{% static brand_logo|default:assistant_icon %}" width="60" height="60" alt=""><span>KEEL<small>Study with direction.</small></span></a>
+  <button class="dash-sidebar-close" type="button" aria-label="Close navigation" data-sidebar-close><svg><use href="#dash-close"></use></svg></button>
+  <nav class="dash-navigation" aria-label="Main navigation">
+    <a href="{% url 'dashboard' %}" {% if active_section == 'overview' %}aria-current="page"{% endif %}><svg><use href="#dash-home"></use></svg><span>Overview</span></a>
+    <a href="{% url 'import_paper' %}" {% if active_section == 'papers' %}aria-current="page"{% endif %}><svg><use href="#dash-papers"></use></svg><span>Exam papers</span></a>
+    <a href="{% url 'practice' %}" {% if active_section == 'practice' %}aria-current="page"{% endif %}><svg><use href="#dash-practice"></use></svg><span>Practice</span></a>
+    <a href="{% url 'assistant' %}" {% if active_section == 'assistant' %}aria-current="page"{% endif %}><svg><use href="#dash-tutor"></use></svg><span>AI tutor</span></a>
+    <a href="{% url 'library' %}" {% if active_section == 'library' %}aria-current="page"{% endif %}><svg><use href="#dash-library"></use></svg><span>Reference library</span></a>
+    <a href="{% url 'dashboard' %}#study-progress" data-sidebar-link><svg><use href="#dash-progress"></use></svg><span>Progress</span></a>
+  </nav>
+  <div class="dash-sidebar-bottom">
+    <img class="dash-lighthouse" src="{% static 'images/dashboard-lighthouse.png' %}" width="1024" height="1536" alt="" loading="lazy">
+    <div class="dash-sidebar-note"><strong>KEEL</strong><p>Naval Architecture &amp;<br>Marine Engineering<br><span>Your personal review workspace</span></p></div>
+  </div>
+</aside>
+<button class="dash-sidebar-backdrop" type="button" aria-label="Close navigation" data-sidebar-close hidden></button>
+<header class="dash-topbar">
+  <button class="dash-menu-toggle" type="button" aria-label="Open navigation" aria-controls="dashboard-sidebar" aria-expanded="false"><svg><use href="#dash-menu"></use></svg></button>
+  <span class="dash-topbar-tagline">Study with direction.</span>
+  <form class="dash-search" action="{% url 'practice' %}" method="get" role="search"><button class="dash-search-submit" type="submit" aria-label="Search practice topics and papers"><svg><use href="#dash-search"></use></svg></button><input id="dashboard-search" type="search" name="q" placeholder="Search topics or exam papers…" aria-label="Search topics or exam papers"><button class="dash-search-shortcut" type="button" aria-label="Focus search"><kbd>Ctrl</kbd><kbd>K</kbd></button></form>
+  <div class="dash-account-tools">
+    <details class="dash-reminders"><summary aria-label="Study reminders"><svg><use href="#dash-bell"></use></svg>{% if review_count %}<span class="dash-reminder-dot" aria-hidden="true"></span>{% endif %}</summary><div class="dash-popover"><strong>Your next study steps</strong>{% if review_count %}<a href="{% url 'practice' %}?progress=review">{{ review_count }} question{{ review_count|pluralize }} to revisit <span>→</span></a>{% else %}<a href="{% url 'practice' %}?progress=review">Review your latest answers <span>→</span></a>{% endif %}<a href="{% url 'library' %}">{{ assistant_documents|length }} ready reference{{ assistant_documents|length|pluralize }} <span>→</span></a><a href="{% url 'dashboard' %}#study-progress">View your practice progress <span>→</span></a></div></details>
+    <details class="dash-profile"><summary aria-label="Account menu for {{ user.username }}"><span class="dash-avatar" aria-hidden="true">{{ user.username|first|upper }}</span><span class="dash-profile-name"><strong>{{ user.username }}</strong><small>Personal account</small></span><svg class="dash-profile-chevron"><use href="#dash-chevron"></use></svg></summary><div class="dash-popover"><strong>{{ user.get_full_name|default:user.username }}</strong><p>Your private study workspace</p>{% if user.is_staff %}<a href="{% url 'admin:index' %}">Administration <span>↗</span></a>{% endif %}<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit"><svg><use href="#dash-logout"></use></svg>Log out</button></form></div></details>
+  </div>
+</header>

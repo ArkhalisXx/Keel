@@ -1,62 +1,45 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<div class="page-heading">
-  <div>
-    <p class="eyebrow">YOUR KNOWLEDGE BASE</p>
-    <h1>Reference library</h1>
-    <p>Your notes. Your textbooks. A foundation for better understanding.</p>
-  </div>
-  <span class="badge">Private workspace</span>
+<div class="page-heading"><div><p class="eyebrow">YOUR KNOWLEDGE, ANCHORED</p><h1>Reference library</h1><p>Bring your textbooks, notes, and exam papers aboard. Your next study session starts with a good source.</p></div><span class="badge">Private to your account</span></div>
+<div class="section-overview" aria-label="Library overview">
+  <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-library"></use></svg><div><strong>{{ library_stats.total }}</strong><span>documents in your library</span></div></div>
+  <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-check"></use></svg><div><strong>{{ library_stats.ready }}</strong><span>ready to study</span></div></div>
+  <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-layers"></use></svg><div><strong>{{ library_stats.processing }}</strong><span>processing in the background</span></div></div>
 </div>
 <div class="grid library-grid">
-  <section class="card library-card">
-    <div class="panel-heading">
-      <span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6"/></svg></span>
-      <div><h2>Add a document</h2><p>Bring your study materials aboard.</p></div>
-    </div>
-    <p class="format-hint">PDF, DOCX or TXT · Up to {{ upload_limit_mb }} MB · {{ pdf_page_limit }} PDF pages<br>Scanned PDFs supported with English OCR. Large books process in the background.</p>
-    <form class="upload-form" method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button>Add to library <span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></span></button>
-    </form>
-    <p class="privacy-note">Private to your account. Upload materials you have permission to use.</p>
-  </section>
-  <section class="card library-card">
-    <div class="panel-heading">
-      <span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
-      <div><h2>Your documents</h2><p>Your personal collection of references.</p></div>
-      <span class="count" aria-label="Document count">{{ documents.paginator.count }}</span>
-    </div>
-    <form method="get" class="library-filters">
-      <label>Find a reference<input name="q" value="{{ search }}" placeholder="Search titles"></label>
-      <div class="filter-pair"><label>File type<select name="type"><option value="">All formats</option><option value="pdf" {% if file_type == 'pdf' %}selected{% endif %}>PDF</option><option value="docx" {% if file_type == 'docx' %}selected{% endif %}>DOCX</option><option value="txt" {% if file_type == 'txt' %}selected{% endif %}>TXT</option></select></label>
-      <label>Status<select name="status"><option value="">All statuses</option>{% for value,label in statuses %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label></div>
-      <div class="filter-pair"><label>Sort by<select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest first</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest first</option><option value="title" {% if sort == 'title' %}selected{% endif %}>Title A–Z</option><option value="status" {% if sort == 'status' %}selected{% endif %}>Status</option></select></label><button>Apply filters</button></div>
-    </form>
-    {% for doc in documents %}
-    <article class="document" data-document-status="{% url 'document_status' doc.pk %}" data-active="{% if doc.status == 'queued' or doc.status == 'processing' %}true{% else %}false{% endif %}">
+<section class="card library-card upload-card">
+  <div class="panel-heading"><span class="panel-icon" aria-hidden="true"><svg><use href="#dash-upload"></use></svg></span><div><h2>Add a document</h2><p>Build your own source collection.</p></div></div>
+  <form class="upload-form" method="post" enctype="multipart/form-data" data-library-upload>{% csrf_token %}{{ form.non_field_errors }}
+    <p><label for="{{ form.title.id_for_label }}">Document title</label>{{ form.title }}{{ form.title.errors }}</p>
+    <div class="upload-dropzone" data-upload-zone><svg aria-hidden="true"><use href="#dash-upload"></use></svg><strong>Choose a file or drop it here</strong><small>PDF, DOCX or TXT · Up to {{ upload_limit_mb }} MB · {{ pdf_page_limit }} PDF pages</small><label for="{{ form.file.id_for_label }}" class="sr-only">Document file</label>{{ form.file }}{{ form.file.errors }}<p class="upload-selection" data-upload-selection role="status"></p></div>
+    <button>Add to library <span aria-hidden="true">↑</span></button>
+  </form>
+  <p class="format-hint">Scanned PDFs can use English OCR; large books process in the background.</p><p class="privacy-note">Upload materials you have permission to use. Check equations and diagrams against the original source.</p>
+</section>
+<section class="card library-card">
+  <div class="panel-heading"><span class="panel-icon" aria-hidden="true"><svg><use href="#dash-papers"></use></svg></span><div><h2>Your documents</h2><p>Find a source. Start a reviewer. Learn something new.</p></div><span class="count">{{ documents.paginator.count }} found</span></div>
+  <form method="get" class="library-filters" aria-label="Filter library">
+    <label class="library-search">Find a reference<input name="q" value="{{ search }}" placeholder="Search document titles…" type="search"></label>
+    <label>File type<select name="type"><option value="">All formats</option><option value="pdf" {% if file_type == 'pdf' %}selected{% endif %}>PDF</option><option value="docx" {% if file_type == 'docx' %}selected{% endif %}>DOCX</option><option value="txt" {% if file_type == 'txt' %}selected{% endif %}>TXT</option></select></label>
+    <label>Status<select name="status"><option value="">All statuses</option>{% for value,label in statuses %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label>Sort by<select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest first</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest first</option><option value="title" {% if sort == 'title' %}selected{% endif %}>Title A–Z</option><option value="status" {% if sort == 'status' %}selected{% endif %}>Status</option></select></label>
+    <div class="library-filter-actions"><button>Apply filters</button><a class="quiet-link" href="{% url 'library' %}">Reset</a></div>
+  </form>
+  <div class="library-document-grid">
+  {% for doc in documents %}
+    <article class="document library-document" data-document-status="{% url 'document_status' doc.pk %}" data-active="{% if doc.status == 'queued' or doc.status == 'processing' %}true{% else %}false{% endif %}">
+      <div class="library-document-top"><span class="library-file-icon" aria-hidden="true"><svg><use href="#dash-papers"></use></svg></span><span class="status-pill" data-state="{{ doc.status }}">{{ doc.get_status_display }}</span></div>
       <h3><a href="{% url 'document' doc.pk %}">{{ doc.title }}</a></h3>
-      {% if doc.status == 'ready' %}<a class="import-document-link" href="{% url 'import_paper' %}?document={{ doc.pk }}">Use as an exam paper →</a>{% endif %}
-      <div class="document-state">
-        <span class="status-pill" data-state="{{ doc.status }}">{{ doc.get_status_display }}</span>
-        <span class="processing-progress">{% if doc.status == 'processing' %}{{ doc.pages_processed }} / {{ doc.total_pages }} pages{% elif doc.status == 'ready' %}{{ doc.total_pages }} pages / sections{% elif doc.status == 'queued' %}Waiting for the worker. Retry is available after two minutes.{% endif %}</span>
-      </div>
-      <p class="ocr-note" {% if not doc.ocr_page_count %}hidden{% endif %}>{{ doc.ocr_page_count }} page(s) read with OCR. Verify equations and symbols against the original.</p>
-      <p class="processing-error" role="status">{{ doc.processing_error }}</p>
+      <div class="document-state"><span class="processing-progress">{% if doc.status == 'processing' %}{{ doc.pages_processed }} / {{ doc.total_pages }} pages{% elif doc.status == 'ready' %}{{ doc.total_pages }} pages / sections{% elif doc.status == 'queued' %}Waiting for the worker. Retry is available after two minutes.{% endif %}</span></div>
+      <p class="ocr-note" {% if not doc.ocr_page_count %}hidden{% endif %}>{{ doc.ocr_page_count }} page(s) read with OCR. Verify equations and symbols in the original.</p><p class="processing-error" role="status">{{ doc.processing_error }}</p>
+      <a class="import-document-link" {% if doc.status != 'ready' %}hidden{% endif %} href="{% url 'import_paper' %}?document={{ doc.pk }}">Create a reviewer or import questions →</a>
       <form method="post" action="{% url 'retry_document' doc.pk %}" class="retry-form" {% if not doc.can_retry %}hidden{% endif %}>{% csrf_token %}<button class="secondary">Retry processing</button></form>
-      <form method="post" action="{% url 'delete_document' doc.pk %}">{% csrf_token %}<button class="secondary">Delete document</button></form>
+      <div class="library-document-actions"><a class="library-download" href="{% url 'document' doc.pk %}">Download original ↓</a><form method="post" action="{% url 'delete_document' doc.pk %}" class="document-delete" data-confirm="Remove this source file from your Library? Its original upload will no longer be available.">{% csrf_token %}<button class="secondary">Delete</button></form></div>
     </article>
-    {% empty %}
-    <div class="empty-state">
-      <span class="empty-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
-      <h3>A fresh page awaits.</h3>
-      <p>Add your first reference using the upload form. Your documents will appear here, ready to study.</p>
-    </div>
-    {% endfor %}
-    {% include 'learning/pagination.html' with page=documents %}
-  </section>
+  {% empty %}<div class="empty-state"><span class="empty-symbol" aria-hidden="true"><svg><use href="#dash-library"></use></svg></span><h3>{% if search or file_type or selected_status %}No matching references.{% else %}A fresh page awaits.{% endif %}</h3><p>{% if search or file_type or selected_status %}Try another search or reset your filters.{% else %}Upload your first reference to begin building your study library.{% endif %}</p></div>{% endfor %}
+  </div>{% include 'learning/pagination.html' with page=documents %}
+</section>
 </div>
 <script src="{% static 'documents.js' %}" defer></script>
 {% endblock %}

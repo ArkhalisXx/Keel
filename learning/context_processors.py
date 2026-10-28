@@ -6,6 +6,13 @@ def assistant_workspace(request):
     branding = {'brand_logo': 'images/keel-logo.png' if finders.find('images/keel-logo.png') else ''}
     if not request.user.is_authenticated:
         return branding
+    current = getattr(request.resolver_match, 'url_name', '')
+    sections = {
+        'dashboard': 'overview', 'library': 'library',
+        'import_paper': 'papers', 'paper_detail': 'papers', 'review_question': 'papers', 'delete_paper': 'papers',
+        'practice': 'practice', 'practice_run': 'practice', 'question': 'practice', 'result': 'practice',
+        'assistant': 'assistant', 'tutor': 'assistant',
+    }
     icon = 'images/assistant-boat.png' if finders.find('images/assistant-boat.png') else 'images/assistant-boat.svg'
     docs = list(Document.objects.filter(owner=request.user, status=Document.Status.READY).only('pk', 'title').order_by('title'))
     scope = request.session.get('assistant_scope', [])
@@ -14,6 +21,8 @@ def assistant_workspace(request):
     history = request.session.get('assistant_history', []) if valid and selected == scope[2] else []
     return {
         **branding,
+        'workspace_shell': current in sections,
+        'active_section': sections.get(current, ''),
         'assistant_documents': docs,
         'assistant_icon': icon,
         'assistant_initial_state': {'mode': scope[1] if valid else 'study', 'documents': selected, 'history': history},

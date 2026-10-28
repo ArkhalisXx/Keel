@@ -100,6 +100,8 @@ def library(request):
         messages.success(request, 'Document uploaded. Text extraction and OCR will run in the background.')
         return redirect('library')
     docs = Document.objects.filter(owner=request.user).defer('pages')
+    library_stats = docs.aggregate(total=Count('pk'), ready=Count('pk', filter=Q(status=Document.Status.READY)),
+                                   processing=Count('pk', filter=Q(status__in=[Document.Status.QUEUED, Document.Status.PROCESSING])))
     search = request.GET.get('q', '').strip()[:200]
     if search:
         docs = docs.filter(title__icontains=search)
@@ -120,7 +122,8 @@ def library(request):
     documents = Paginator(docs.order_by(sorts[sort], 'pk'), 12).get_page(request.GET.get('page'))
     return render(request, 'learning/library.html', {'form':form, 'documents': documents,
         'upload_limit_mb': settings.DOCUMENT_MAX_UPLOAD_MB, 'pdf_page_limit': settings.DOCUMENT_MAX_PDF_PAGES,
-        'search': search, 'file_type': file_type, 'selected_status': status, 'statuses': Document.Status.choices, 'sort': sort})
+        'search': search, 'file_type': file_type, 'selected_status': status, 'statuses': Document.Status.choices, 'sort': sort,
+        'library_stats': library_stats})
 
 @login_required
 def document(request, pk):

@@ -1,8 +1,9 @@
+{% load static %}
 {{ assistant_initial_state|json_script:"assistant-initial-state" }}
 <div class="assistant-panel" data-chat-url="{% url 'assistant_chat' %}">
   <div class="chat-toolbar"><span class="badge">Keel AI</span><button class="secondary chat-reset" type="button">New chat</button></div>
   <div class="chat-log" role="log" aria-label="Assistant conversation" aria-live="polite">
-    <div class="chat-welcome"><h2>What’s on your mind?</h2><p>Try “Explain metacentric height” or select a document and ask about a topic.</p></div>
+    <div class="chat-welcome"><img class="chat-welcome-mascot" src="{% static assistant_icon %}" alt="" width="65" height="65"><h2>What’s on your mind?</h2><p>Try “Explain metacentric height” or select a document and ask about a topic.</p></div>
   </div>
   <form class="chat-form" method="post" action="{% url 'assistant_chat' %}">
     {% csrf_token %}

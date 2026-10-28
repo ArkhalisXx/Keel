@@ -21,6 +21,8 @@
           : data.status === 'queued' ? 'Waiting for the worker. Retry is available after two minutes.' : '';
         card.querySelector('.processing-error').textContent = data.error;
         card.querySelector('.retry-form').hidden = !data.can_retry;
+        const useDocument = card.querySelector('.import-document-link');
+        if (useDocument) useDocument.hidden = data.status !== 'ready';
         const ocr = card.querySelector('.ocr-note');
         ocr.hidden = !data.ocr_pages;
         ocr.textContent = `${data.ocr_pages} page(s) read with OCR. Verify equations and symbols against the original.`;

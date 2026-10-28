@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  if (!document.body.classList.contains('dashboard-page')) return;
+  if (!document.body.classList.contains('workspace-page')) return;
   const body = document.body;
   const menu = document.querySelector('.dash-menu-toggle');
   const sidebar = document.querySelector('.dash-sidebar');
@@ -57,7 +57,7 @@
     popovers.forEach(detail => { if (!detail.contains(event.target)) detail.open = false; });
   });
   function askKeel(question = '', submit = false) {
-    if (!document.querySelector('.assistant-launcher')) { window.location.assign('/assistant/'); return; }
+    if (!document.querySelector('.assistant-panel')) return false;
     return window.dispatchEvent(new CustomEvent('keel:ask', {cancelable: true, detail: {question, submit}}));
   }
   document.querySelectorAll('[data-ask-keel]').forEach(link => {

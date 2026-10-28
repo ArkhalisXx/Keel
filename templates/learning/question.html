@@ -1,1 +1,6 @@
-{% extends 'base.html' %}{% block content %}{% if q.paper.kind == 'reviewer' %}<p class="notice">AI-generated reviewer question. Verify important calculations against the cited reference.</p>{% endif %}<p class="eyebrow">{{ q.topic }}</p><section class="card auth"><h1>{{ q.prompt }}</h1><form method="post">{% csrf_token %}{% for i, choice in choices %}<label class="choice"><input type="radio" name="choice" value="{{ i }}" required> {{ choice }}</label>{% endfor %}<button>Check answer</button></form></section>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">PRACTICE / {{ q.topic }}</p><h1>One question. A step forward.</h1><p>Take your time, choose an answer, and check your understanding.</p></div><a class="button secondary" href="{% url 'practice' %}">All collections →</a></div>
+{% if q.paper.kind == 'reviewer' %}<p class="notice">AI-generated reviewer question. Verify important calculations against the cited reference.</p>{% endif %}
+<section class="card question-focus"><p class="eyebrow">{{ q.topic }}</p><h1>{{ q.prompt }}</h1><form method="post">{% csrf_token %}{% for i, choice in choices %}<label class="choice"><input type="radio" name="choice" value="{{ i }}" required><span class="choice-letter" aria-hidden="true">{{ forloop.counter }}</span><span>{{ choice }}</span></label>{% endfor %}<button>Check answer <span aria-hidden="true">→</span></button></form></section>
+{% endblock %}

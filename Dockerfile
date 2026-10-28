@@ -1,6 +1,16 @@
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 OMP_THREAD_LIMIT=1
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
+# HTTPS avoids HTTP-only proxy/mirror errors; retries tolerate temporary outages.
+# Keep Debian signature verification and TLS verification enabled.
+RUN --mount=type=secret,id=build_ca,mode=0444 \
+    set -eu; \
+    sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources; \
+    set -- -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30; \
+    if [ -f /run/secrets/build_ca ]; then \
+      set -- "$@" -o Acquire::https::CaInfo=/run/secrets/build_ca; \
+    fi; \
+    apt-get "$@" -o APT::Update::Error-Mode=any update \
+    && apt-get "$@" install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt .
