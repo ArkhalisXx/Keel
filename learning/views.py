@@ -97,7 +97,9 @@ def library(request):
         with transaction.atomic():
             doc.save()
             queue_document(doc)
-        messages.success(request, 'Document uploaded. Text extraction and OCR will run in the background.')
+        messages.success(request, 'Document uploaded. Keep the library open to prepare its text.'
+                         if getattr(settings, 'SERVERLESS_JOBS', False) else
+                         'Document uploaded. Text extraction and OCR will run in the background.')
         return redirect('library')
     docs = Document.objects.filter(owner=request.user).defer('pages')
     library_stats = docs.aggregate(total=Count('pk'), ready=Count('pk', filter=Q(status=Document.Status.READY)),
@@ -128,6 +130,12 @@ def library(request):
 @login_required
 def document(request, pk):
     doc = get_object_or_404(Document, pk=pk, owner=request.user)
+    if getattr(settings, 'SERVERLESS_JOBS', False):
+        # A signed private object-store URL avoids the function response-size cap.
+        response = redirect(doc.file.url)
+        response['Cache-Control'] = 'private, no-store'
+        response['Referrer-Policy'] = 'no-referrer'
+        return response
     return FileResponse(doc.file.open('rb'), as_attachment=True, filename=doc.title + __import__('pathlib').Path(doc.file.name).suffix)
 
 @login_required

@@ -5,6 +5,7 @@ import uuid
 from datetime import timedelta
 
 from celery import shared_task
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -18,6 +19,9 @@ REVIEWER_BATCH_SIZE = 5
 
 
 def _dispatch_batch(pk, token):
+    if getattr(settings, 'SERVERLESS_JOBS', False):
+        # Never recursively process a whole reviewer within one function call.
+        return
     try:
         generate_reviewer.delay(pk, str(token))
     except Exception:

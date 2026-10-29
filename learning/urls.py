@@ -1,6 +1,9 @@
 from django.urls import path
 from . import views, assistant_views, exam_views, practice_groups, practice_ai, paper_deletion, progress_views
+from . import serverless_jobs
 urlpatterns = [
+    path('documents/<int:pk>/process/', serverless_jobs.process_document_serverless, name='process_document_serverless'),
+    path('papers/<int:pk>/process/', serverless_jobs.process_reviewer_serverless, name='process_reviewer_serverless'),
     path('progress/', progress_views.progress, name='progress'),
     path('practice/start/',practice_groups.start_practice,name='start_practice'),
     path('practice/sessions/<int:pk>/',practice_groups.practice_run,name='practice_run'),

@@ -10,3 +10,4 @@ gunicorn==25.3.0
 whitenoise==6.12.0
 python-dotenv==1.2.1
 django-allauth[socialaccount]==65.21.0
+django-storages[s3]==1.14.6

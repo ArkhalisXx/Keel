@@ -8,3 +8,4 @@ uploads/
 staticfiles/
 .env.*
 !.env.example
+.vercel/

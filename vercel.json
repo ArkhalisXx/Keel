@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "django",
+  "buildCommand": "python manage.py check --deploy",
+  "functions": {
+    "vercel_wsgi.py": {
+      "maxDuration": 60,
+      "includeFiles": "{templates/**,static/**,learning/migrations/**}",
+      "excludeFiles": "{.env,.env.*,.local-secret-key,db.sqlite3,uploads/**,.venv/**,docs/**,learning/test*.py,learning/tests.py}"
+    }
+  }
+}

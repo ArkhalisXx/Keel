@@ -5,7 +5,7 @@
 <div class="section-overview" aria-label="Library overview">
   <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-library"></use></svg><div><strong>{{ library_stats.total }}</strong><span>documents in your library</span></div></div>
   <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-check"></use></svg><div><strong>{{ library_stats.ready }}</strong><span>ready to study</span></div></div>
-  <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-layers"></use></svg><div><strong>{{ library_stats.processing }}</strong><span>processing in the background</span></div></div>
+  <div class="overview-stat"><svg aria-hidden="true"><use href="#dash-layers"></use></svg><div><strong>{{ library_stats.processing }}</strong><span>{% if serverless_jobs %}waiting or processing{% else %}processing in the background{% endif %}</span></div></div>
 </div>
 <div class="grid library-grid">
 <section class="card library-card upload-card">
@@ -15,7 +15,7 @@
     <div class="upload-dropzone" data-upload-zone><svg aria-hidden="true"><use href="#dash-upload"></use></svg><strong>Choose a file or drop it here</strong><small>PDF, DOCX or TXT · Up to {{ upload_limit_mb }} MB · {{ pdf_page_limit }} PDF pages</small><label for="{{ form.file.id_for_label }}" class="sr-only">Document file</label>{{ form.file }}{{ form.file.errors }}<p class="upload-selection" data-upload-selection role="status"></p></div>
     <button>Add to library <span aria-hidden="true">↑</span></button>
   </form>
-  <p class="format-hint">Scanned PDFs can use English OCR; large books process in the background.</p><p class="privacy-note">Upload materials you have permission to use. Check equations and diagrams against the original source.</p>
+  <p class="format-hint">{% if serverless_jobs %}Upload text-based PDF, DOCX or TXT files up to {{ upload_limit_mb }} MB. Scanned-only PDFs need OCR before upload. Keep this Library page open while documents process.{% else %}Scanned PDFs can use English OCR; large books process in the background.{% endif %}</p>{% if serverless_jobs %}<noscript><p class="notice">Enable JavaScript to process uploaded documents, then keep this Library page open until they are Ready.</p></noscript>{% endif %}<p class="privacy-note">Upload materials you have permission to use. Check equations and diagrams against the original source.</p>
 </section>
 <section class="card library-card">
   <div class="panel-heading"><span class="panel-icon" aria-hidden="true"><svg><use href="#dash-papers"></use></svg></span><div><h2>Your documents</h2><p>Find a source. Start a reviewer. Learn something new.</p></div><span class="count">{{ documents.paginator.count }} found</span></div>
@@ -28,12 +28,13 @@
   </form>
   <div class="library-document-grid">
   {% for doc in documents %}
-    <article class="document library-document" data-document-status="{% url 'document_status' doc.pk %}" data-active="{% if doc.status == 'queued' or doc.status == 'processing' %}true{% else %}false{% endif %}">
+    <article class="document library-document" data-document-status="{% url 'document_status' doc.pk %}" {% if serverless_jobs %}data-serverless-process="{% url 'process_document_serverless' doc.pk %}"{% endif %} data-active="{% if doc.status == 'queued' or doc.status == 'processing' %}true{% else %}false{% endif %}">
       <div class="library-document-top"><span class="library-file-icon" aria-hidden="true"><svg><use href="#dash-papers"></use></svg></span><span class="status-pill" data-state="{{ doc.status }}">{{ doc.get_status_display }}</span></div>
       <h3><a href="{% url 'document' doc.pk %}">{{ doc.title }}</a></h3>
-      <div class="document-state"><span class="processing-progress">{% if doc.status == 'processing' %}{{ doc.pages_processed }} / {{ doc.total_pages }} pages{% elif doc.status == 'ready' %}{{ doc.total_pages }} pages / sections{% elif doc.status == 'queued' %}Waiting for the worker. Retry is available after two minutes.{% endif %}</span></div>
+      <div class="document-state"><span class="processing-progress">{% if doc.status == 'processing' %}{{ doc.pages_processed }} / {{ doc.total_pages }} pages{% elif doc.status == 'ready' %}{{ doc.total_pages }} pages / sections{% elif doc.status == 'queued' %}{% if serverless_jobs %}Keep this page open to process this document.{% else %}Waiting for the worker. Retry is available after two minutes.{% endif %}{% endif %}</span></div>
       <p class="ocr-note" {% if not doc.ocr_page_count %}hidden{% endif %}>{{ doc.ocr_page_count }} page(s) read with OCR. Verify equations and symbols in the original.</p><p class="processing-error" role="status">{{ doc.processing_error }}</p>
       <a class="import-document-link" {% if doc.status != 'ready' %}hidden{% endif %} href="{% url 'import_paper' %}?document={{ doc.pk }}">Create a reviewer or import questions →</a>
+      {% if serverless_jobs %}<button type="button" class="secondary" data-process-resume hidden>Continue processing</button>{% endif %}
       <form method="post" action="{% url 'retry_document' doc.pk %}" class="retry-form" {% if not doc.can_retry %}hidden{% endif %}>{% csrf_token %}<button class="secondary">Retry processing</button></form>
       <div class="library-document-actions"><a class="library-download" href="{% url 'document' doc.pk %}">Download original ↓</a><form method="post" action="{% url 'delete_document' doc.pk %}" class="document-delete" data-confirm="Remove this source file from your Library? Its original upload will no longer be available.">{% csrf_token %}<button class="secondary">Delete</button></form></div>
     </article>

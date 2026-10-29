@@ -1,9 +1,10 @@
 from django.contrib.staticfiles import finders
+from django.conf import settings
 from .models import Document
 
 
 def assistant_workspace(request):
-    branding = {'brand_logo': 'images/keel-logo.png' if finders.find('images/keel-logo.png') else ''}
+    branding = {'serverless_jobs': getattr(settings, 'SERVERLESS_JOBS', False), 'brand_logo': 'images/keel-logo.png' if finders.find('images/keel-logo.png') else ''}
     if not request.user.is_authenticated:
         return branding
     current = getattr(request.resolver_match, 'url_name', '')

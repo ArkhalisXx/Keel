@@ -14,6 +14,9 @@ from .services import DocumentExtractionError, ProcessingCancelled, extract_page
 
 
 def dispatch_document(pk, token):
+    if getattr(settings, 'SERVERLESS_JOBS', False):
+        # A private, CSRF-protected request processes this committed row later.
+        return
     try:
         process_document.apply_async(args=[pk, str(token)], task_id=str(token))
     except Exception:
