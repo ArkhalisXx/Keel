@@ -1,0 +1,11 @@
+/* Local KaTeX fonts keep equations available without a third-party CDN. */
+.keel-math{white-space:normal;overflow-wrap:normal;word-break:normal;line-height:normal;color:inherit}
+.keel-math .katex{font-size:1.08em;text-rendering:optimizeLegibility}
+.keel-math-display{display:block;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;margin:1em 0;padding:10px 3px 12px;scrollbar-width:thin;scrollbar-color:#2a6b89 transparent}
+.keel-math-display .katex-display{margin:0;text-align:center}
+.keel-math-display .katex-display>.katex{white-space:nowrap}
+.chat-bubble .keel-math-display,.answer .keel-math-display,.flashcard .keel-math-display{color:#dcf7ff}
+.chat-bubble>div:not(.chat-sources),.answer,.flashcard,.paper-question-row>div,.choice>span:last-child,.answer-comparison>div{min-width:0}
+.choice .keel-math{display:inline-block;max-width:100%;vertical-align:middle;overflow-x:auto;overflow-y:hidden;padding:4px 0}
+@media(max-width:760px){.keel-math .katex{font-size:1.04em}.keel-math-display{padding-block:12px;margin:.85em 0;text-align:left}.keel-math-display .katex-display{text-align:left}}
+@media(prefers-reduced-motion:reduce){.keel-math-display{scroll-behavior:auto}}

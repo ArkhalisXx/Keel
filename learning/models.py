@@ -47,6 +47,8 @@ class ExamPaper(models.Model):
     requested_count = models.PositiveSmallIntegerField(default=5)
     generated_count = models.PositiveSmallIntegerField(default=0)
     generation_focus = models.CharField(max_length=240, blank=True)
+    generation_source = models.CharField(max_length=12, default='notes',
+        choices=[('notes', 'Generate from notes'), ('activities', 'Use textbook activities and quizzes')])
     source_page_start = models.PositiveIntegerField(null=True, blank=True)
     source_page_end = models.PositiveIntegerField(null=True, blank=True)
 
@@ -75,6 +77,7 @@ class Question(models.Model):
     paper = models.ForeignKey(ExamPaper, null=True, blank=True, on_delete=models.CASCADE, related_name='questions')
     source_document = models.ForeignKey(Document, null=True, blank=True, on_delete=models.SET_NULL)
     source_number = models.CharField(max_length=20, blank=True)
+    activity_source_id = models.CharField(max_length=64, blank=True, default='')
     source_page = models.PositiveIntegerField(null=True, blank=True)
     position = models.PositiveIntegerField(default=0)
 

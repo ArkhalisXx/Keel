@@ -4,6 +4,9 @@ from .models import Document, Question
 
 class PaperImportForm(forms.Form):
     kind = forms.ChoiceField(label='Create from this document', initial='auto', choices=[('auto', 'Automatic: import a paper or generate a reviewer'), ('exam', 'Import an exam paper and its answer key'), ('reviewer', 'Generate a Q&A reviewer from notes / a textbook')], required=False)
+    source_mode = forms.ChoiceField(label='Question source', initial='notes', required=False,
+        choices=[('notes', 'Create new questions from notes'), ('activities', 'Use textbook activities, quizzes & exercises')],
+        help_text='Reuse questions already printed in the document, or create new ones from its explanations.')
     question_count = forms.IntegerField(label='AI reviewer questions', initial=20, min_value=1, max_value=100, required=False, help_text='1–100 questions, generated in small background batches. Larger sets use more API quota.')
 
     title = forms.CharField(max_length=200, help_text='A name for this practice paper.')
@@ -22,9 +25,10 @@ class PaperImportForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        cleaned['source_mode'] = cleaned.get('source_mode') or 'notes'
         # Exam imports retain the paper's full numbering and answer-key sections.
         if cleaned.get('kind') == 'exam':
-            cleaned.update(focus='', page_start=None, page_end=None)
+            cleaned.update(focus='', page_start=None, page_end=None, source_mode='notes')
             return cleaned
         document = cleaned.get('document')
         if document and not any(field in self.errors for field in ('focus', 'page_start', 'page_end')):
@@ -33,8 +37,8 @@ class PaperImportForm(forms.Form):
             try:
                 focus, start, end = validate_scope(document, focus=cleaned.get('focus', ''),
                                                   page_start=cleaned.get('page_start'), page_end=cleaned.get('page_end'))
-                if focus:
-                    select_sources(document, focus=focus, page_start=start, page_end=end)
+                if focus or cleaned['source_mode'] == 'activities':
+                    select_sources(document, focus=focus, page_start=start, page_end=end, source_mode=cleaned['source_mode'])
             except AIError as error:
                 self.add_error(None, str(error))
             else:

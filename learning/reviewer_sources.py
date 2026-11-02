@@ -116,7 +116,15 @@ def _windows(text):
         yield text[start:start + MAX_EXCERPT]
 
 
-def select_sources(document, *, focus='', page_start=None, page_end=None, offset=0):
+def select_sources(document, *, focus='', page_start=None, page_end=None, offset=0, source_mode='notes'):
+    if source_mode == 'activities':
+        from .activity_sources import activity_questions
+        records = activity_questions(document, focus=focus, page_start=page_start, page_end=page_end)
+        return [{'title': document.title, 'id': document.pk, 'page': item['page'], 'text': item['text'],
+                 'source': 'activity', 'source_id': item['source_id']}
+                for item in records[max(0, int(offset)):max(0, int(offset)) + MAX_SOURCES]]
+    if source_mode != 'notes':
+        raise AIError('Choose a supported question source.', 'reviewer_source')
     focus, start, end = validate_scope(document, focus=focus, page_start=page_start, page_end=page_end)
     normalized_focus = _normal_text(focus)
     chapter = None

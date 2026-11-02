@@ -11,6 +11,10 @@
   {% if workspace_shell %}<link rel="stylesheet" href="{% static 'dashboard.css' %}"><script src="{% static 'workspace.js' %}" defer></script>{% endif %}
   <link rel="stylesheet" href="{% static 'site.css' %}">
   <script src="{% static 'site.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'vendor/katex/katex.min.css' %}">
+  <link rel="stylesheet" href="{% static 'equations.css' %}">
+  <script src="{% static 'vendor/katex/katex.min.js' %}" defer></script>
+  <script src="{% static 'equations.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
   <link rel="stylesheet" href="{% static 'motion.css' %}">
 </head>

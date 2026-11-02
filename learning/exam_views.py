@@ -31,8 +31,11 @@ def import_paper(request):
         try:
             kind = form.cleaned_data.get('kind') or 'auto'
             scope = {key: form.cleaned_data.get(key) for key in ('focus', 'page_start', 'page_end')}
+            source_mode = form.cleaned_data.get('source_mode') or 'notes'
+            if source_mode == 'activities':
+                scope['source_mode'] = source_mode
             scoped = bool(form.cleaned_data.get('focus') or request.POST.get('page_start') or request.POST.get('page_end'))
-            if kind == 'reviewer' or (kind == 'auto' and scoped):
+            if kind == 'reviewer' or (kind == 'auto' and (scoped or source_mode == 'activities')):
                 paper, created = create_reviewer(request.user, form.cleaned_data['document'], form.cleaned_data['title'], form.cleaned_data['topic'], form.cleaned_data.get('question_count') or 20, **scope)
             else:
                 try:
@@ -72,8 +75,14 @@ def paper_source(request, pk):
     from .reviewer_sources import available_page_bounds, document_outline
     document = get_object_or_404(Document, pk=pk, owner=request.user, status=Document.Status.READY)
     first, last = available_page_bounds(document)
+    from .activity_sources import activity_questions
+    try:
+        activities = activity_questions(document)
+    except AIError:
+        activities = []
     return JsonResponse({'title': document.title, 'page_min': first, 'page_max': last,
-                         'chapters': document_outline(document)})
+                         'chapters': document_outline(document),
+                         'activity_count': len(activities)})
 
 
 @login_required
@@ -138,6 +147,21 @@ def retry_reviewer(request, pk):
             if not minimum <= count <= 100:
                 messages.error(request,f'Choose between {minimum} and 100 reviewer questions. Completed questions are kept.')
             else:
+                if paper.generation_source == 'activities':
+                    if (not paper.document or paper.document.owner_id != request.user.pk
+                            or paper.document.status != Document.Status.READY):
+                        messages.error(request, 'The source document is no longer ready. Choose a ready document to create a new question set.')
+                        return redirect('paper_detail', pk=pk)
+                    from .activity_sources import activity_questions
+                    try:
+                        available = len(activity_questions(paper.document, focus=paper.generation_focus,
+                            page_start=paper.source_page_start, page_end=paper.source_page_end))
+                    except AIError as error:
+                        messages.error(request, str(error))
+                        return redirect('paper_detail', pk=pk)
+                    if count > available:
+                        count = max(minimum, available)
+                        messages.info(request, f'Using the {available} textbook questions found in the selected scope.')
                 paper.requested_count = count
                 paper.save(update_fields=['requested_count'])
                 queue_reviewer(paper)

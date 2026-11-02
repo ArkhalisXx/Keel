@@ -6,6 +6,10 @@
     const source = field('document');
     const mode = field('kind');
     const count = field('question_count');
+    const questionSource = field('source_mode');
+    const sourceDescription = builder.querySelector('[data-question-source-description]');
+    const activityStatus = builder.querySelector('[data-activity-status]');
+    let activityCount = null;
     const focus = field('focus');
     const from = field('page_start');
     const to = field('page_end');
@@ -24,25 +28,38 @@
       const isExam = mode.value === 'exam';
       controls.forEach(control => { control.hidden = isExam; });
       // Hidden AI fields must not block a printed-paper import's browser validation.
-      [count, focus, from, to].forEach(input => { input.disabled = isExam; });
+      [count, focus, from, to, questionSource].forEach(input => { input.disabled = isExam; });
       if (chapter) chapter.disabled = isExam;
       presets.forEach(button => {
         button.setAttribute('aria-pressed', String(Number(button.dataset.questionCount) === Number(count.value)));
       });
       const chosen = source.selectedOptions[0];
       const sourceName = source.value && chosen ? chosen.textContent.trim() : 'your document';
+      const usesActivities = !isExam && questionSource.value === 'activities';
+      activityStatus.hidden = !usesActivities;
+      activityStatus.textContent = activityCount === null
+        ? 'Select a document to check for activity and quiz questions.'
+        : activityCount ? `${activityCount} textbook questions detected across the document. Chapter, topic, and page selections may narrow this number.`
+        : 'No activity or quiz questions were detected. Choose a document with readable activity headings, or create new questions from notes.';
+      sourceDescription.textContent = usesActivities
+        ? 'Reuse original activity, quiz, and exercise questions. Printed choices and answer keys are kept where available. AI can prepare missing choices and explanations.'
+        : 'Create new questions and explanations from the document’s teaching material.';
       const hasScope = Boolean(focus.value.trim() || from.value || to.value);
       if (isExam) {
         modeDescription.textContent = 'Extract printed A–D questions and use the paper’s answer key. Questions without keys remain drafts.';
         summary.textContent = `Import printed questions and answers from ${sourceName}.`;
       } else {
-        modeDescription.textContent = mode.value === 'reviewer'
+        modeDescription.textContent = usesActivities
+          ? 'Find questions already in your textbook’s activities and quizzes within your selected scope.'
+          : mode.value === 'reviewer'
           ? 'Create new questions and source-grounded explanations with your configured AI provider.'
           : 'Automatic imports printed questions when available. A topic or page selection creates a focused AI reviewer.';
         const scope = from.value || to.value ? `pages ${from.value || 'start'}–${to.value || 'end'}` : 'all readable pages';
         const topic = focus.value.trim() ? ` · focused on “${focus.value.trim()}”` : '';
         const requestCount = Number(count.value) || 20;
-        summary.textContent = mode.value === 'auto' && !hasScope
+        summary.textContent = usesActivities
+          ? `Up to ${requestCount} existing textbook questions from ${sourceName} · ${scope}${topic}.`
+          : mode.value === 'auto' && !hasScope
           ? `Import ${sourceName}, or generate ${requestCount} reviewer questions if no exam questions are found.`
           : `${requestCount} reviewer questions from ${sourceName} · ${scope}${topic}.`;
       }
@@ -56,6 +73,7 @@
     async function loadSource() {
       if (currentRequest) currentRequest.abort();
       resetChapters();
+      activityCount = null;
       [from, to].forEach(input => { input.removeAttribute('max'); input.min = '1'; });
       if (!source.value) {
         sourceStatus.textContent = 'Select a document to see its available chapters and pages.';
@@ -80,6 +98,7 @@
         } else {
           sourceStatus.textContent = 'Ready to use. Enter a topic or page range to narrow your reviewer.';
         }
+        activityCount = Number.isInteger(data.activity_count) ? data.activity_count : null;
         const chapters = Array.isArray(data.chapters) ? data.chapters : [];
         for (const item of chapters) {
           if (typeof item.label !== 'string' || !Number.isInteger(item.start) || !Number.isInteger(item.end)) continue;
