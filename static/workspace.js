@@ -28,10 +28,16 @@
   menu?.addEventListener('click', () => body.classList.contains('dash-nav-open') ? closeMenu() : openMenu());
   document.querySelectorAll('[data-sidebar-close]').forEach(button => button.addEventListener('click', () => closeMenu()));
   document.querySelectorAll('[data-sidebar-link]').forEach(link => link.addEventListener('click', () => closeMenu(false)));
+  function quickFind() {
+    if (body.classList.contains('dash-nav-open')) closeMenu(false);
+    const handled = !window.dispatchEvent(new CustomEvent('keel:quick-find', {cancelable: true, detail: {query: search?.value || ''}}));
+    if (!handled) search?.focus();
+    return handled;
+  }
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
-      search?.focus();
+      quickFind();
     }
     if (event.key === 'Escape') {
       if (body.classList.contains('dash-nav-open')) closeMenu();
@@ -44,7 +50,8 @@
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }
   });
-  document.querySelector('.dash-search-shortcut')?.addEventListener('click', () => search?.focus());
+  document.querySelector('.dash-search-shortcut')?.addEventListener('click', quickFind);
+  search?.form?.addEventListener('submit', event => { if (quickFind()) event.preventDefault(); });
   mobile.addEventListener('change', () => closeMenu(false));
   closeMenu(false);
   const popovers = document.querySelectorAll('.dash-account-tools details');

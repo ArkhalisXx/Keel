@@ -8,9 +8,11 @@
   <title>Keel · Study with direction</title>
   <link rel="stylesheet" href="{% static 'style.css' %}">
   <link rel="stylesheet" href="{% static 'workspace.css' %}">
-  {% if workspace_shell %}<link rel="stylesheet" href="{% static 'dashboard.css' %}"><script src="{% static 'workspace.js' %}" defer></script>{% endif %}
+  {% if workspace_shell %}<link rel="stylesheet" href="{% static 'dashboard.css' %}"><link rel="stylesheet" href="{% static 'quick-find.css' %}"><script src="{% static 'workspace.js' %}" defer></script><script src="{% static 'quick-find.js' %}" defer></script>{% endif %}
   <link rel="stylesheet" href="{% static 'site.css' %}">
   <script src="{% static 'site.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'study-interactions.css' %}">
+  <script src="{% static 'study-interactions.js' %}" defer></script>
   <link rel="stylesheet" href="{% static 'vendor/katex/katex.min.css' %}">
   <link rel="stylesheet" href="{% static 'equations.css' %}">
   <script src="{% static 'vendor/katex/katex.min.js' %}" defer></script>
@@ -39,6 +41,7 @@
   {% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
   {% block content %}{% endblock %}
 </main>
+{% if workspace_shell %}{% include 'learning/quick_find.html' %}{% endif %}
 {% block footer %}<footer {% if workspace_shell %}class="dash-footer"{% endif %}><span>KEEL · Study with direction.</span><span>Personal review workspace · Independent of PRC</span></footer>{% endblock %}
 {% if user.is_authenticated %}
 {% if request.resolver_match.url_name != 'assistant' %}

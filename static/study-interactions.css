@@ -1,0 +1,17 @@
+/* Shared study actions follow the dashboard's quiet navy and cyan palette. */
+.chat-bubble .study-answer-tools,.card-help .study-answer-tools{display:flex;align-items:center;flex-wrap:wrap;gap:10px;max-width:100%;margin-top:16px;font-size:11px;line-height:1.5;color:#8fb6cc}
+.chat-bubble .study-copy-answer,.card-help .study-copy-answer{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:auto;min-height:31px;padding:6px 10px;border:1px solid #286079;border-radius:8px;background:#0a2f46;color:#b7e5f2;font-size:11px;line-height:1.4;box-shadow:none;cursor:pointer}
+.chat-bubble .study-copy-answer:hover,.card-help .study-copy-answer:hover{background:#10445e;border-color:#3b91ac;color:#e4faff}
+.study-copy-answer:focus-visible,.study-notice-dismiss:focus-visible{outline:2px solid #53d7f1;outline-offset:3px}
+.study-copy-answer:disabled{cursor:wait;opacity:.65}
+.chat-bubble .study-copy-status,.card-help .study-copy-status{font-size:11px;line-height:1.5;color:#98cbdc;overflow-wrap:anywhere}
+.study-copy-fallback{display:block;width:100%;max-width:100%;margin-top:10px;padding:12px;border:1px solid #3289a7;border-radius:9px;background:#031b2c;color:#d6ecf5;font:12px/1.7 ui-monospace,Consolas,monospace;resize:vertical}
+.study-copy-fallback[hidden]{display:none}
+.notice.study-notice-dismissible{position:relative;padding-right:52px}
+.notice .study-notice-dismiss{position:absolute;right:11px;top:11px;display:grid;place-items:center;width:29px;height:29px;min-height:0;margin:0;padding:0;border:1px solid #3b6980;border-radius:8px;background:transparent;color:#add9e9;font-size:22px;font-weight:400;line-height:1;box-shadow:none;cursor:pointer}
+.notice .study-notice-dismiss:hover{background:#173e54;color:#effaff}
+.flashcard-shortcuts{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:13px 0 20px;color:#87b1ca;font-size:11px;line-height:1.8}
+.flashcard-shortcuts[hidden]{display:none}
+.flashcard-shortcuts kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;min-height:23px;padding:1px 5px;border:1px solid #2b5870;border-bottom-width:2px;border-radius:5px;background:#082b41;color:#bce8f3;font:11px/1.4 ui-monospace,Consolas,monospace}
+.flashcard .choice.study-keyboard-choice{outline:2px solid #37cae8;outline-offset:2px;background:#103b52}
+@media(max-width:600px){.chat-bubble .study-answer-tools,.card-help .study-answer-tools{align-items:flex-start;gap:8px}.study-copy-status{flex-basis:100%}.flashcard-shortcuts{font-size:10px}.notice .study-notice-dismiss{right:9px;top:10px}}

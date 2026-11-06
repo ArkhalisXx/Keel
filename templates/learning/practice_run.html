@@ -14,6 +14,7 @@
 <section class="card flashcard" aria-labelledby="current-question">
 <div class="flashcard-top"><p class="eyebrow">{% if item.number %}QUESTION {{ item.number }}{% else %}QUESTION {{ item.index|add:1 }}{% endif %}</p><span class="status-pill">{% if feedback %}Answer checked{% else %}Flashcard practice{% endif %}</span></div>
 <h2 id="current-question">{{ item.prompt }}</h2>
+<p class="flashcard-shortcuts" data-flashcard-shortcuts hidden>{% if feedback %}<kbd>Enter</kbd> {% if run.answered == run.total %}See session results{% else %}Continue to the next card{% endif %}{% else %}<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> Choose an answer · your feedback setting still applies{% endif %}</p>
 {% if item.ai_generated %}<p class="ocr-note">AI-generated reviewer question · Check important formulas against the original reference.</p>{% endif %}
 {% if feedback %}
 <ol type="A" class="session-answer-list">{% for choice in item.choices %}<li class="{% if forloop.counter0 == item.correct_index %}session-correct{% elif forloop.counter0 == item.selected_index %}session-incorrect{% endif %}">{{ choice }}{% if forloop.counter0 == item.correct_index %}<strong> — Correct answer</strong>{% endif %}{% if forloop.counter0 == item.selected_index %}<span> · Your answer</span>{% endif %}</li>{% endfor %}</ol>

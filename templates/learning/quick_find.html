@@ -1,0 +1,11 @@
+<dialog class="quick-find" id="quick-find" aria-labelledby="quick-find-title" aria-describedby="quick-find-help" data-search-url="{% url 'workspace_search' %}">
+  <form method="dialog" class="quick-find-heading">
+    <div><span class="quick-find-eyebrow">YOUR WORKSPACE, WITHIN REACH</span><h2 id="quick-find-title">Find your next step</h2></div>
+    <button type="submit" class="quick-find-close" aria-label="Close quick search">×</button>
+  </form>
+  <label class="quick-find-input" for="quick-find-query"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.7" cy="10.7" r="7.2"/><path d="m16 16 5 5"/></svg><input id="quick-find-query" type="search" aria-label="Search your workspace" maxlength="200" autocomplete="off" spellcheck="false" placeholder="Find documents, papers, or practice questions…" autofocus></label>
+  <p class="quick-find-status" id="quick-find-status" role="status" aria-live="polite">Jump to a page, or search your own study material.</p>
+  <nav class="quick-find-results" aria-label="Quick search results"><ul data-quick-find-results></ul></nav>
+  <div class="quick-find-empty" data-quick-find-empty hidden><strong>No matches yet</strong><p>Try a document title, a topic, or a few words from a question.</p></div>
+  <footer class="quick-find-footer" id="quick-find-help"><span><kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></footer>
+</dialog>

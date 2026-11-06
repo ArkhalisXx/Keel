@@ -1,6 +1,8 @@
 from django.urls import path
+from .workspace_search import workspace_search
 from . import views, assistant_views, exam_views, practice_groups, practice_ai, paper_deletion, progress_views
 urlpatterns = [
+    path('workspace/search/', workspace_search, name='workspace_search'),
     path('progress/', progress_views.progress, name='progress'),
     path('practice/start/',practice_groups.start_practice,name='start_practice'),
     path('practice/sessions/<int:pk>/',practice_groups.practice_run,name='practice_run'),

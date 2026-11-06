@@ -34,13 +34,15 @@
       event.preventDefault();
       if (!event.repeat) submitPrompt();
     });
-    const append = (role, text) => {
+    const append = (role, text, allowCopy = true) => {
       panel.querySelector('.chat-welcome')?.remove();
       const bubble = document.createElement('article');
       bubble.className = `chat-bubble chat-${role}`;
       const heading = document.createElement('strong'); heading.textContent = role === 'user' ? 'You' : 'Keel';
       const content = document.createElement('div'); content.textContent = text;
-      bubble.append(heading, content); log.append(bubble); bubble.scrollIntoView({block: panel.dataset.reader === 'true' && role === 'assistant' ? 'start' : 'nearest'}); return bubble;
+      bubble.append(heading, content);
+      if (role === 'assistant' && allowCopy) window.KeelStudy?.addCopyButton(bubble, text);
+      log.append(bubble); bubble.scrollIntoView({block: panel.dataset.reader === 'true' && role === 'assistant' ? 'start' : 'nearest'}); return bubble;
     };
     const sourceLink = (container, text, url, external) => {
       try {
@@ -102,7 +104,7 @@
       if (mode.value === 'documents' && !form.querySelector('[name=documents]:checked')) {feedback.textContent='Select at least one ready document.';return;}
       const payload = new FormData(form); const text = form.elements.question.value.trim();if (!text) return;
       busy=true;question.value='';append('user',text);form.querySelector('button[type=submit]').disabled=true;mode.disabled=true;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=true;log.setAttribute('aria-busy','true');
-      const pending=append('assistant','Preparing your answer…');
+      const pending=append('assistant','Preparing your answer…',false);
       pending.classList.add('chat-pending');
       feedback.textContent='Keel is working on your question…';
       const slowNotice=setTimeout(() => {
@@ -115,7 +117,7 @@
         pending.remove();
         if (!question.value) question.value=text;
         feedback.textContent=error.message;
-        if (error.data?.document_sources?.length) { const bubble=append('assistant','Matching passages from your documents:'); sources(bubble,error.data); }
+        if (error.data?.document_sources?.length) { const bubble=append('assistant','Matching passages from your documents:',false); sources(bubble,error.data); }
       } finally {clearTimeout(slowNotice);busy=false;form.querySelector('button[type=submit]').disabled=false;mode.disabled=false;for(const c of form.querySelectorAll('[name=documents]')) c.disabled=false;log.removeAttribute('aria-busy');}
     }
     form.addEventListener('submit', event => { event.preventDefault(); submitPrompt(); });
